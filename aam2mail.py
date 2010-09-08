@@ -15,13 +15,18 @@
 # or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 # for more details.
 
-# Where we expect to find our config files
-config_dir = '/crypt/home/crooks/nymgrind/news2mail/etc'
-# A directory for storing received xover data
-tmp_dir = '/crypt/home/crooks/nymgrind/news2mail/tmp'
-# The maildir that will be created
-maildir_dir = '/crypt/home/crooks/Mail/nym'
-mbox_file = '/crypt/home/crooks/nymgrind/news2mail/mail/mbox'
+import os.path
+import mailbox
+import sys
+import nntplib
+
+HOMEDIR = os.path.expanduser('~')
+APPDIR = os.path.join(HOMEDIR, 'aam2mail')
+ETCDIR = os.path.join(APPDIR, 'etc')
+TMPDIR = os.path.join(APPDIR, 'tmp')
+MAILDIR = os.path.join(APPDIR, 'maildir')
+MBOXFILE = os.path.join(APPDIR, 'mbox', 'mbox')
+
 # Store retrieved messages in Maildir format
 do_maildir = False
 # Store retrieved message in mbox format
@@ -32,16 +37,11 @@ fetch_all = False
 
 # ----- Don't go beyond here unless you know what you're doing! -----
 
-from os import path
-import mailbox
-import sys
-import nntplib
-
 class FileFunc():
     def file2list(self, filename):
         """Read a file and return each line as a list item."""
         items = []
-        if path.isfile(filename):
+        if os.path.isfile(filename):
             readlist = open(filename, 'r')
             for line in readlist:
                 if not line.startswith('#') and len(line) > 1:
@@ -149,26 +149,26 @@ def MailPrep(msgid, sender, date, body, server):
 
 filefunc = FileFunc()
 
-if not path.exists(config_dir):
-    sys.stdout.write("Error: Config Path %s does not exist\n" % config_dir)
+if not os.path.exists(ETCDIR):
+    sys.stdout.write("Error: Config Path %s does not exist\n" % ETCDIR)
     sys.exit(1)
-server_file = path.join(config_dir, "servers")
+server_file = os.path.join(ETCDIR, "servers")
 # If required, configured Maildir processing
 if do_maildir:
-    mail_path = path.split(maildir_dir)[0]
-    if not path.exists(mail_path):
+    mail_path = os.path.split(MAILDIR)[0]
+    if not os.path.exists(mail_path):
         sys.stdout.write("Error: Maildir path %s does not exist\n" % mail_path)
         sys.exit(1)
-    maildir = mailbox.Maildir(maildir_dir, create = True)
+    maildir = mailbox.Maildir(MAILDIR, create = True)
 # If required, configure mbox processing
 if do_mbox:
-    mail_path = path.split(mbox_file)[0]
-    if not path.exists(mail_path):
+    mail_path = os.path.split(MBOXFILE)[0]
+    if not os.path.exists(mail_path):
         sys.stdout.write("Error: Mbox path %s does not exist\n" % mail_path)
         sys.exit(1)
-    mbox = mailbox.mbox(mbox_file, create = True)
-if not path.exists(tmp_dir):
-    sys.stdout.write("Error: Tmp Path %s does not exist\n" % tmp_dir)
+    mbox = mailbox.mbox(MBOXFILE, create = True)
+if not os.path.exists(TMPDIR):
+    sys.stdout.write("Error: Tmp Path %s does not exist\n" % TMPDIR)
     sys.exit(1)
 
 # This section defines what type of Subjects we're interested in.  The choices
@@ -177,17 +177,16 @@ if not path.exists(tmp_dir):
 do_text = False
 do_hsub = False
 do_esub = False
-subj_list = filefunc.file2list(path.join(config_dir, "subject_text"))
+subj_list = filefunc.file2list(os.path.join(ETCDIR, "subject_text"))
 if subj_list:
     do_text = True
     sys.stdout.write("Checking %s plain text Subjects\n" % len(subj_list))
-hsub_list = filefunc.file2list(path.join(config_dir, "subject_hsub"))
+hsub_list = filefunc.file2list(os.path.join(ETCDIR, "subject_hsub"))
 if hsub_list:
     do_hsub = True
     import hsub
-    hsub = hsub.hsub()
     sys.stdout.write("Checking %s hSub Subjects\n" % len(hsub_list))
-esub_list = filefunc.file2list(path.join(config_dir, "subject_esub"))
+esub_list = filefunc.file2list(os.path.join(ETCDIR, "subject_esub"))
 if esub_list:
     do_esub = True
     import esub
@@ -208,7 +207,7 @@ received = 0
 for server in servers:
     # Assign a temporary file name for storing xover data.  The name is based
     # on <tempdir>/<server>.tmp
-    tmpfile = path.join(tmp_dir, server + '.tmp')
+    tmpfile = os.path.join(TMPDIR, server + '.tmp')
     news = nntplib.NNTP(server, readermode = True)
     # group returns: response, count, first, last, name
     resp, grpcount, \
@@ -222,7 +221,7 @@ for server in servers:
         continue
     # The following xover line is often remarked out during testing as this
     # preserves a constant tmpfile.
-    news.xover(first, last, tmpfile)
+    #news.xover(first, last, tmpfile)
 
     # Create a dictionary keyed by Message-ID, containing the Subject and Date.
     msgids = ProcessTmp(tmpfile)
