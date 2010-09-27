@@ -23,7 +23,7 @@ import nntplib
 HOMEDIR = os.path.expanduser('~')
 APPDIR = os.path.join(HOMEDIR, 'aam2mail')
 ETCDIR = os.path.join(APPDIR, 'etc')
-TMPDIR = os.path.join(APPDIR, 'tmp')
+SPOOLDIR = os.path.join(APPDIR, 'spool')
 MAILDIR = os.path.join(APPDIR, 'maildir')
 MBOXFILE = os.path.join(APPDIR, 'mbox', 'mbox')
 
@@ -106,7 +106,7 @@ def GetRange(server, first, last):
         sys.stdout.write(long_string)
         return first, last
 
-def ProcessTmp(filename):
+def xover2dict(filename):
     """Process a temporary file of xover data.  Return a dictionary keyed
     by Message-ID's for processing."""
     msgids = {}
@@ -167,8 +167,8 @@ if do_mbox:
         sys.stdout.write("Error: Mbox path %s does not exist\n" % mail_path)
         sys.exit(1)
     mbox = mailbox.mbox(MBOXFILE, create = True)
-if not os.path.exists(TMPDIR):
-    sys.stdout.write("Error: Tmp Path %s does not exist\n" % TMPDIR)
+if not os.path.exists(SPOOLDIR):
+    sys.stdout.write("Error: Spool Path %s does not exist\n" % SPOOLDIR)
     sys.exit(1)
 
 # This section defines what type of Subjects we're interested in.  The choices
@@ -207,7 +207,7 @@ received = 0
 for server in servers:
     # Assign a temporary file name for storing xover data.  The name is based
     # on <tempdir>/<server>.tmp
-    tmpfile = os.path.join(TMPDIR, server + '.tmp')
+    spool = os.path.join(SPOOLDIR, server + '.tmp')
     news = nntplib.NNTP(server, readermode = True)
     # group returns: response, count, first, last, name
     resp, grpcount, \
@@ -221,10 +221,10 @@ for server in servers:
         continue
     # The following xover line is often remarked out during testing as this
     # preserves a constant tmpfile.
-    #news.xover(first, last, tmpfile)
+    news.xover(first, last, spool)
 
     # Create a dictionary keyed by Message-ID, containing the Subject and Date.
-    msgids = ProcessTmp(tmpfile)
+    msgids = xover2dict(spool)
 
     # Process our previously created dictionary of Message-ID's.
     for msgid in msgids:
