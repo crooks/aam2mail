@@ -68,7 +68,7 @@ def hexiv(hsub, digits = 16):
 def main():
     """Only used for testing purposes.  We Generate an hSub and then check it
     using the same input text."""
-    passphrase = "Pass phrase"
+    passphrase = "foo"
     hsub = hash(passphrase)
     iv = hexiv(hsub)
     print "Passphrase: " + passphrase

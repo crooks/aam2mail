@@ -45,7 +45,9 @@ class FileFunc():
             readlist = open(filename, 'r')
             for line in readlist:
                 if not line.startswith('#') and len(line) > 1:
-                    items.append(line.rstrip())
+                    # We only want the part left of a #
+                    content = line.split('#', 1)[0].rstrip()
+                    items.append(content)
             readlist.close()
         return items
 
@@ -70,7 +72,7 @@ class FileFunc():
             textdb.write(string + "\n")
         textdb.close()
 
-def GetRange(server, first, last):
+def get_range(server, first, last):
     """Return a range of article numbers we should process.  We determine this
     by comparing the articles available on the server with those (if known)
     from our previous use of this server."""
@@ -212,7 +214,7 @@ for server in servers:
     # group returns: response, count, first, last, name
     resp, grpcount, \
     grpfirst, grplast, grpname = news.group('alt.anonymous.messages')
-    first, last = GetRange(server, grpfirst, grplast)
+    first, last = get_range(server, grpfirst, grplast)
     msgcnt = int(last) - int(first)
     sys.stdout.write("Processing %d messages from %s\n" % (msgcnt, server))
     if msgcnt == 0:
