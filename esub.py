@@ -27,8 +27,9 @@ class esub:
         texthash = md5(text).digest()
         keyhash = md5(key).digest()
         if iv is None: iv = urandom(8)
-        crypt = Blowfish.new(keyhash, Blowfish.MODE_CFB, iv).encrypt(texthash)
-        return (iv + crypt).encode('hex')
+        crypt1 = Blowfish.new(keyhash, Blowfish.MODE_OFB,iv).encrypt(texthash)[:8]
+        crypt2 = Blowfish.new(keyhash, Blowfish.MODE_OFB,crypt1).encrypt(texthash[8:])
+        return (iv + crypt1 + crypt2).encode('hex')
 
     def check(self, text, key, esub):
         """Extract the IV from a passed eSub and generate another based on it,
@@ -42,3 +43,22 @@ class esub:
         except TypeError:
             return False
         return (self.bf(text, key, iv) == esub)
+
+def main():
+    """Only used for testing purposes.  We Generate an eSub and then check it
+    using the same input text."""
+    e = esub()
+    key = "key"
+    text = "text"
+    esubs = []
+    esubs.append("14857375e7174ae1dd83b80612f8a148e2777c7ae78c4c7d")
+    esubs.append("fb56b638106688702dfed01fb763e3c9c29de2f46611eabe")
+    esubs.append("7f338d465085b8912d15a857c0726c270655bad5e8859f2f")
+    esubs.append("ac2ad32d9f603a3b1deaa57ee970a7ecfbd42717b5256328")
+    esubs.append("1c5e5d8ff9ef51fe082b96a2db196d7d0e9b9933e51a4bd1")
+    for sub in esubs:
+        print "%s: %s" % (sub, e.check(text, key, sub))
+
+# Call main function.
+if (__name__ == "__main__"):
+    main()
