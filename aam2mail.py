@@ -37,40 +37,38 @@ fetch_all = False
 
 # ----- Don't go beyond here unless you know what you're doing! -----
 
-class FileFunc():
-    def file2list(self, filename):
-        """Read a file and return each line as a list item."""
-        items = []
-        if os.path.isfile(filename):
-            readlist = open(filename, 'r')
-            for line in readlist:
-                if not line.startswith('#') and len(line) > 1:
-                    # We only want the part left of a #
-                    content = line.split('#', 1)[0].rstrip()
-                    items.append(content)
-            readlist.close()
-        return items
+def file2list(self, filename):
+    """Read a file and return each line as a list item."""
+    items = []
+    if os.path.isfile(filename):
+        readlist = open(filename, 'r')
+        for line in readlist:
+            content = line.split('#', 1)[0].rstrip()
+            if len(content) > 1:
+                items.append(content)
+        readlist.close()
+    return items
 
-    def file2dict(self, filename):
-        """Read a file, split each line by spaces and return a dictionary,
-        keyed by the first item and with the remaining items as a list."""
-        dictionary = {}
-        for line in self.file2list(filename):
-            fields = line.split(" ")
-            key = fields.pop(0)
-            dictionary[key] = fields
-        return dictionary
+def file2dict(self, filename):
+    """Read a file, split each line by spaces and return a dictionary,
+    keyed by the first item and with the remaining items as a list."""
+    dictionary = {}
+    for line in self.file2list(filename):
+        fields = line.split(" ")
+        key = fields.pop(0)
+        dictionary[key] = fields
+    return dictionary
 
-    def dict2file(self, filename, dictionary):
-        "Write a dictionary to a text file"
-        textdb = open(filename, 'w')
-        for key in dictionary:
-            string = key
-            for field in dictionary[key]:
-                string += " "
-                string += field
-            textdb.write(string + "\n")
-        textdb.close()
+def dict2file(self, filename, dictionary):
+    "Write a dictionary to a text file"
+    textdb = open(filename, 'w')
+    for key in dictionary:
+        string = key
+        for field in dictionary[key]:
+            string += " "
+            string += field
+        textdb.write(string + "\n")
+    textdb.close()
 
 def get_range(server, first, last):
     """Return a range of article numbers we should process.  We determine this
@@ -149,8 +147,6 @@ def MailPrep(msgid, sender, date, body, server):
     payload += body
     return payload
 
-filefunc = FileFunc()
-
 if not os.path.exists(ETCDIR):
     sys.stdout.write("Error: Config Path %s does not exist\n" % ETCDIR)
     sys.exit(1)
@@ -179,16 +175,16 @@ if not os.path.exists(SPOOLDIR):
 do_text = False
 do_hsub = False
 do_esub = False
-subj_list = filefunc.file2list(os.path.join(ETCDIR, "subject_text"))
+subj_list = file2list(os.path.join(ETCDIR, "subject_text"))
 if subj_list:
     do_text = True
     sys.stdout.write("Checking %s plain text Subjects\n" % len(subj_list))
-hsub_list = filefunc.file2list(os.path.join(ETCDIR, "subject_hsub"))
+hsub_list = file2list(os.path.join(ETCDIR, "subject_hsub"))
 if hsub_list:
     do_hsub = True
     import hsub
     sys.stdout.write("Checking %s hSub Subjects\n" % len(hsub_list))
-esub_list = filefunc.file2list(os.path.join(ETCDIR, "subject_esub"))
+esub_list = file2list(os.path.join(ETCDIR, "subject_esub"))
 if esub_list:
     do_esub = True
     import esub
@@ -199,7 +195,7 @@ if not do_text and not do_hsub and not do_esub:
     sys.exit(1)
 
 # Populate a dictionary of news servers
-servers = filefunc.file2dict(server_file)
+servers = file2dict(server_file)
 
 # Dedupe maintains a list of Message-IDs so that duplicate messages
 # aren't created when we have multiple news servers defined.
@@ -278,5 +274,5 @@ if do_mbox:
     mbox.close()
 sys.stdout.write("Received %d messages\n" % received)
 # Write the revised server db
-filefunc.dict2file(server_file, servers)
+dict2file(server_file, servers)
 
