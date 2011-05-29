@@ -43,7 +43,9 @@ def file2list(filename):
     if os.path.isfile(filename):
         readlist = open(filename, 'r')
         for line in readlist:
+            # This beast just strips comments from read lines.
             content = line.split('#', 1)[0].rstrip()
+            # If a line starts with a #, content will be length zero
             if len(content) > 0:
                 items.append(content)
         readlist.close()
@@ -69,7 +71,9 @@ def dict2file(filename, d):
     "Write a dictionary to a text file"
     f = open(filename, 'w')
     for k in d:
-        f.write("%s %s\n" % (k, d[k]))
+        # In theory we shouldn't need to strip this, but in practice, theory
+        # and practice are frequently different.
+        f.write("%s %s\n" % (k.strip(), d[k]))
     f.close()
 
 def get_range(sfirst, slast, himark):
@@ -78,6 +82,21 @@ def get_range(sfirst, slast, himark):
     from our previous use of this server."""
     first = int(sfirst)
     last = int(slast)
+    # If more than 500 articles to read, prompt for how many.
+    howmany = last - first
+    if howmany > 500:
+        prompt = "How many articles to read? (0 - %s): " % howmany
+        n = -1
+        while n < 0 or n > howmany:
+            s = raw_input(prompt)
+            # The raw_input function takes a string so we need to check it.
+            try:
+                n = int(s)
+            except ValueError:
+                n = -1
+        # This should always meet the first criteria in the next conditional.
+        himark = last - n
+
     if himark >= first and himark <= last:
         # This is the normal state of affairs. Our himark lies between the
         # server's high and low.
@@ -107,7 +126,6 @@ def MailPrep(msgid, sender, date, body, server):
     payload += "Message-ID: %s\n\n" % msgid
     payload += body
     return payload
-
 
 # Do some basic checks that our required directories exist.
 if not os.path.isdir(ETCDIR):
