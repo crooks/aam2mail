@@ -149,6 +149,7 @@ hsub_list = file2list(os.path.join(ETCDIR, "subject_hsub"))
 if hsub_list:
     do_hsub = True
     import hsub
+    hsub = hsub.hsub()
     sys.stdout.write("Checking %s hSub Subjects\n" % len(hsub_list))
 esub_list = file2list(os.path.join(ETCDIR, "subject_esub"))
 if esub_list:
