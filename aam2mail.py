@@ -24,19 +24,6 @@ HOMEDIR = os.path.expanduser('~')
 APPDIR = os.path.join(HOMEDIR, 'aam2mail')
 ETCDIR = os.path.join(APPDIR, 'etc')
 SPOOLDIR = os.path.join(APPDIR, 'spool')
-MAILDIR = os.path.join(APPDIR, 'maildir')
-MBOXFILE = os.path.join(APPDIR, 'mbox', 'mbox')
-
-# Store retrieved messages in Maildir format
-DO_MAILDIR = False
-# Store retrieved message in mbox format
-DO_MBOX = True
-# If True, all messages will be retreived instead of just those required.
-# Bad for performance, very good for anonymity.
-FETCH_ALL = False
-# Prompt for how many articles to read from a server when greater than this
-# are available.
-ARTPROMPT = 500
 
 # ----- Don't go beyond here unless you know what you're doing! -----
 
@@ -54,20 +41,23 @@ def file2list(filename):
         readlist.close()
     return items
 
-def file2dict(filename):
+def file2dict(filename, numeric = False):
     """Read a file and split each line at the first space encountered. The
-    first element is the key, the rest is the content. If the content is an
-    integer, keep it, otherwise assume zero."""
+    first element is the key, the rest is the content. If numeric is True
+    then only integer values will be excepted."""
     d = {}
     for line in file2list(filename):
         fields = line.split(" ", 1)
         k = fields[0]
         c = fields[1]
-        try:
-            i = int(c)
-        except ValueError:
-            i = 0
-        d[k] = i
+        if numeric:
+            try:
+                c = int(c)
+            except ValueError:
+                c = 0
+            d[k] = c
+        else:
+            d[k] = c.strip()
     return d
 
 def dict2file(filename, d):
@@ -79,7 +69,7 @@ def dict2file(filename, d):
         f.write("%s %s\n" % (k.strip(), d[k]))
     f.close()
 
-def get_range(server, sfirst, slast, himark):
+def get_range(server, maxart, sfirst, slast, himark):
     """Return a range of article numbers we should process.  We determine this
     by comparing the articles available on the server with those (if known)
     from our previous use of this server."""
@@ -93,7 +83,7 @@ def get_range(server, sfirst, slast, himark):
 
     # If more than 500 articles to read, prompt for how many.
     howmany = last - first
-    if howmany > ARTPROMPT:
+    if howmany > maxart:
         prompt = "%s: " % server
         prompt += "How many articles to read? (0 - %s): " % howmany
         n = -1
@@ -126,6 +116,11 @@ def MailPrep(msgid, sender, date, body, server):
     payload += body
     return payload
 
+def isopt(cfg, opt):
+    if opt in cfg and opt[cfg]:
+        return True
+    return False
+
 # Do some basic checks that our required directories exist.
 if not os.path.isdir(ETCDIR):
     sys.stdout.write("Error: Config Path %s does not exist\n" % ETCDIR)
@@ -134,20 +129,35 @@ if not os.path.isdir(SPOOLDIR):
     sys.stdout.write("Error: Config Path %s does not exist\n" % SPOOLDIR)
     sys.exit(1)
 
+cfgfile = os.path.join(ETCDIR, 'config')
+if not os.path.isfile(cfgfile):
+    sys.stdout.write("Error: Config file %s does not exist\n" % cfgfile)
+    sys.exit(1)
+cfg = file2dict(cfgfile)
+opts = 'do_maildir do_mbox maildir mboxfile fetch_all fetch_limit'
+optlist = opts.split(" ")
+for opt in optlist:
+    if not opt in cfg: cfg[opt] = False
+# These options depend on others.
+if not cfg['maildir']: cfg['do_maildir'] = False
+if not cfg['mboxfile']: cfg['do_mbox'] = False
+
 # If required, configured Maildir processing
-if DO_MAILDIR:
-    mail_path = os.path.split(MAILDIR)[0]
+if cfg['do_maildir']:
+    maildir = os.path.join(HOMEDIR, 'Maildir', cfg['maildir'])
+    mail_path = os.path.split(maildir)[0]
     if not os.path.exists(mail_path):
         sys.stdout.write("Error: Maildir path %s does not exist\n" % mail_path)
         sys.exit(1)
-    maildir = mailbox.Maildir(MAILDIR, create = True)
+    maildir = mailbox.Maildir(maildir, create = True)
 # If required, configure mbox processing
-if DO_MBOX:
-    mail_path = os.path.split(MBOXFILE)[0]
+if cfg['do_mbox']:
+    mboxfile = os.path.join(HOMEDIR, cfg['mboxfile'])
+    mail_path = os.path.split(mboxfile)[0]
     if not os.path.exists(mail_path):
         sys.stdout.write("Error: Mbox path %s does not exist\n" % mail_path)
         sys.exit(1)
-    mbox = mailbox.mbox(MBOXFILE, create = True)
+    mbox = mailbox.mbox(mboxfile, create = True)
 if not os.path.exists(SPOOLDIR):
     sys.stdout.write("Error: Spool Path %s does not exist\n" % SPOOLDIR)
     sys.exit(1)
@@ -182,7 +192,7 @@ if not do_text and not do_hsub and not do_esub:
 server_file = os.path.join(ETCDIR, "servers")
 himark_file = os.path.join(SPOOLDIR, "servers")
 servers = file2list(server_file)
-himarks = file2dict(himark_file)
+himarks = file2dict(himark_file, numeric = True)
 # Add missing servers
 for server in servers:
     if server not in himarks:
@@ -207,7 +217,8 @@ for server in himarks:
     # group returns: response, count, first, last, name
     resp, grpcount, \
     grpfirst, grplast, grpname = news.group('alt.anonymous.messages')
-    first, last = get_range(server, grpfirst, grplast, himarks[server])
+    first, last = get_range(server, cfg['fetch_limit'], grpfirst, grplast,
+                            himarks[server])
     msgcnt = int(last) - int(first)
     sys.stdout.write("Processing %d messages from %s\n" % (msgcnt, server))
     if msgcnt == 0:
@@ -239,7 +250,7 @@ for server in himarks:
 
         # Retreive the actual payload.  This is amazingly inefficient as we
         # could just get the ones we want but that's bad for anonymity.
-        if FETCH_ALL:
+        if cfg['fetch_all']:
             # The tuple returned by nntp.body includes the actual body as a
             # list object as the fourth element, hence [3].
             body = list2multi_line_string(news.body(msgid)[3])
@@ -260,21 +271,21 @@ for server in himarks:
                     wanted = True
                     break
         if wanted:
-            if not FETCH_ALL:
+            if not cfg['fetch_all']:
                 body = list2multi_line_string(news.body(msgid)[3])
             # Create the message in the Maildir
-            if DO_MAILDIR:
+            if cfg['do_maildir']:
                 maildir.add(MailPrep(msgid, sender, date, body, server))
-            if DO_MBOX:
+            if cfg['do_mbox']:
                 mbox.add(MailPrep(msgid, sender, date, body, server))
             # Increment the received message count
             received += 1
     news.quit()
-    # That went well, so update our recorded first/last article numbers.
+    # That went well, so update our recorded himark.
     himarks[server] = int(last)
-if DO_MAILDIR:
+if cfg['do_maildir']:
     maildir.close()
-if DO_MBOX:
+if cfg['do_mbox']:
     mbox.close()
 sys.stdout.write("Received %d messages\n" % received)
 # Write the revised server db
