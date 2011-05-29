@@ -34,6 +34,9 @@ do_mbox = True
 # If True, all messages will be retreived instead of just those required.
 # Bad for performance, very good for anonymity.
 fetch_all = False
+# Prompt for how many articles to read from a server when greater than this
+# are available.
+ARTPROMPT = 500
 
 # ----- Don't go beyond here unless you know what you're doing! -----
 
@@ -76,16 +79,17 @@ def dict2file(filename, d):
         f.write("%s %s\n" % (k.strip(), d[k]))
     f.close()
 
-def get_range(sfirst, slast, himark):
+def get_range(server, sfirst, slast, himark):
     """Return a range of article numbers we should process.  We determine this
     by comparing the articles available on the server with those (if known)
     from our previous use of this server."""
     first = int(sfirst)
     last = int(slast)
     # If more than 500 articles to read, prompt for how many.
-    howmany = last - first
-    if howmany > 500:
-        prompt = "How many articles to read? (0 - %s): " % howmany
+    howmany = last - himark
+    if howmany > ARTPROMPT:
+        prompt = "%s: " % server
+        prompt += "How many articles to read? (0 - %s): " % howmany
         n = -1
         while n < 0 or n > howmany:
             s = raw_input(prompt)
@@ -208,7 +212,7 @@ for server in himarks:
     # group returns: response, count, first, last, name
     resp, grpcount, \
     grpfirst, grplast, grpname = news.group('alt.anonymous.messages')
-    first, last = get_range(grpfirst, grplast, himarks[server])
+    first, last = get_range(server, grpfirst, grplast, himarks[server])
     msgcnt = int(last) - int(first)
     sys.stdout.write("Processing %d messages from %s\n" % (msgcnt, server))
     if msgcnt == 0:
