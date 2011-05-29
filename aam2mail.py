@@ -37,98 +37,59 @@ fetch_all = False
 
 # ----- Don't go beyond here unless you know what you're doing! -----
 
-def file2list(self, filename):
+def file2list(filename):
     """Read a file and return each line as a list item."""
     items = []
     if os.path.isfile(filename):
         readlist = open(filename, 'r')
         for line in readlist:
             content = line.split('#', 1)[0].rstrip()
-            if len(content) > 1:
+            if len(content) > 0:
                 items.append(content)
         readlist.close()
     return items
 
-def file2dict(self, filename):
-    """Read a file, split each line by spaces and return a dictionary,
-    keyed by the first item and with the remaining items as a list."""
-    dictionary = {}
-    for line in self.file2list(filename):
-        fields = line.split(" ")
-        key = fields.pop(0)
-        dictionary[key] = fields
-    return dictionary
+def file2dict(filename):
+    """Read a file and split each line at the first space encountered. The
+    first element is the key, the rest is the content. If the content is an
+    integer, keep it, otherwise assume zero."""
+    d = {}
+    for line in file2list(filename):
+        fields = line.split(" ", 1)
+        k = fields[0]
+        c = fields[1]
+        try:
+            i = int(c)
+        except ValueError:
+            i = 0
+        d[k] = i
+    return d
 
-def dict2file(self, filename, dictionary):
+def dict2file(filename, d):
     "Write a dictionary to a text file"
-    textdb = open(filename, 'w')
-    for key in dictionary:
-        string = key
-        for field in dictionary[key]:
-            string += " "
-            string += field
-        textdb.write(string + "\n")
-    textdb.close()
+    f = open(filename, 'w')
+    for k in d:
+        f.write("%s %s\n" % (k, d[k]))
+    f.close()
 
-def get_range(server, first, last):
+def get_range(sfirst, slast, himark):
     """Return a range of article numbers we should process.  We determine this
     by comparing the articles available on the server with those (if known)
     from our previous use of this server."""
-    # If we've processed this server before, it should already have a
-    # formatted record.
-    if len(servers[server]) == 2:
-        # firstdb and lastdb are set to the record numbers we last accessed
-        # from this server.
-        firstdb, lastdb = servers[server]
-        # lastdb must be within the range the server has available.
-        if lastdb >= first and lastdb <= last:
-            # Our stored last number is within bounds, so believe it and return
-            # it as the pointer from which to start reading articles.  We want
-            # everything from that point to the last record on the server.
-            return lastdb, last
-        else:
-            # Something is wrong, our lastread is outside the server's
-            # retention.  Ignore our previous lastread and take everything the
-            # server has to offer.
-            art_range = int(last) - int(first)
-            long_string = list2string([
-              'Warn: Last read article from %s is no longer ' % server,
-              'retained.  Retrieving all %s articles ' % art_range,
-              'available.\n'])
-            sys.stdout.write(long_string)
-            return first, last
+    first = int(sfirst)
+    last = int(slast)
+    if himark >= first and himark <= last:
+        # This is the normal state of affairs. Our himark lies between the
+        # server's high and low.
+        return str(himark), slast
+    elif himark <= last:
+        # Our himark is lower than what the server can offer. Take all there
+        # is to have.
+        return sfirst, slast
     else:
-        # We have no record of reading this server so range needs to be all
-        # the server has to offer.
-        long_string = list2string([
-          'Info: Processing server %s for the first time. ' % server,
-          'All available articles %s to %s will be read.\n' % (first, last)])
-        sys.stdout.write(long_string)
-        return first, last
-
-def xover2dict(filename):
-    """Process a temporary file of xover data.  Return a dictionary keyed
-    by Message-ID's for processing."""
-    msgids = {}
-    tmpfile = open(filename, "r")
-    for line in tmpfile:
-        line = line.rstrip()
-        items = line.split("\t")
-        subject = items[1]
-        sender = items[2]
-        date = items[3]
-        mid = items[4]
-        msgids[mid] = [subject, sender, date]
-    tmpfile.close
-    return msgids
-
-def list2string(list):
-    """Take a list and return it as a long string.  Useful (amongst other
-    things) for writing long messages to stdout."""
-    string = ""
-    for line in list:
-        string += line
-    return string
+        # Oh dear, we appear to be beyond the server.  Take all that's on
+        # offer. This will reset our count for next time.
+        return slast, slast
 
 def list2multi_line_string(list):
     """Take a list and return it as a multi-line string."""
@@ -147,10 +108,15 @@ def MailPrep(msgid, sender, date, body, server):
     payload += body
     return payload
 
-if not os.path.exists(ETCDIR):
+
+# Do some basic checks that our required directories exist.
+if not os.path.isdir(ETCDIR):
     sys.stdout.write("Error: Config Path %s does not exist\n" % ETCDIR)
     sys.exit(1)
-server_file = os.path.join(ETCDIR, "servers")
+if not os.path.isdir(SPOOLDIR):
+    sys.stdout.write("Error: Config Path %s does not exist\n" % SPOOLDIR)
+    sys.exit(1)
+
 # If required, configured Maildir processing
 if do_maildir:
     mail_path = os.path.split(MAILDIR)[0]
@@ -170,7 +136,7 @@ if not os.path.exists(SPOOLDIR):
     sys.exit(1)
 
 # This section defines what type of Subjects we're interested in.  The choices
-# are plain tex, hsub and esub.  These are marked for processing if the
+# are plain text, hsub and esub.  These are marked for processing if the
 # corresponding config file exists and contains entries.
 do_text = False
 do_hsub = False
@@ -194,23 +160,36 @@ if not do_text and not do_hsub and not do_esub:
     sys.stdout.write("Error: No text, hsub or esub Subjects defined.\n")
     sys.exit(1)
 
-# Populate a dictionary of news servers
-servers = file2dict(server_file)
+# Populate the himarks dict and sync is with our etc/servers text file.
+server_file = os.path.join(ETCDIR, "servers")
+himark_file = os.path.join(SPOOLDIR, "servers")
+servers = file2list(server_file)
+himarks = file2dict(himark_file)
+# Add missing servers
+for server in servers:
+    if server not in himarks:
+        himarks[server] = 0
+# Delete unwanted servers
+for server in himarks:
+    if server not in servers:
+        del himarks[server]
 
 # Dedupe maintains a list of Message-IDs so that duplicate messages
 # aren't created when we have multiple news servers defined.
 dedupe = []
 received = 0
 
-for server in servers:
+for server in himarks:
     # Assign a temporary file name for storing xover data.  The name is based
     # on <tempdir>/<server>.tmp
     spool = os.path.join(SPOOLDIR, server + '.tmp')
+
+    # Establish a connection with the newsserver.
     news = nntplib.NNTP(server, readermode = True)
     # group returns: response, count, first, last, name
     resp, grpcount, \
     grpfirst, grplast, grpname = news.group('alt.anonymous.messages')
-    first, last = get_range(server, grpfirst, grplast)
+    first, last = get_range(grpfirst, grplast, himarks[server])
     msgcnt = int(last) - int(first)
     sys.stdout.write("Processing %d messages from %s\n" % (msgcnt, server))
     if msgcnt == 0:
@@ -222,17 +201,24 @@ for server in servers:
     news.xover(first, last, spool)
 
     # Create a dictionary keyed by Message-ID, containing the Subject and Date.
-    msgids = xover2dict(spool)
+    #msgids = xover2dict(spool)
 
-    # Process our previously created dictionary of Message-ID's.
-    for msgid in msgids:
+    s = open(spool, "r")
+    for ov in s:
+        ov2 = ov.rstrip()
+        items = ov2.split("\t")
+        subject = items[1]
+        sender = items[2]
+        date = items[3]
+        msgid = items[4]
+
         # Skip checking messages if we already have this Message-ID
         if msgid in dedupe:
             continue
         else:
             # Add the Message-ID to the dedupe list.  We won't need it again.
             dedupe.append(msgid)
-        subject, sender, date = msgids[msgid]
+
         # Retreive the actual payload.  This is amazingly inefficient as we
         # could just get the ones we want but that's bad for anonymity.
         if fetch_all:
@@ -267,12 +253,12 @@ for server in servers:
             received += 1
     news.quit()
     # That went well, so update our recorded first/last article numbers.
-    servers[server] = [first, last]
+    himarks[server] = int(last)
 if do_maildir:
     maildir.close()
 if do_mbox:
     mbox.close()
 sys.stdout.write("Received %d messages\n" % received)
 # Write the revised server db
-dict2file(server_file, servers)
+dict2file(himark_file, himarks)
 
