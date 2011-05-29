@@ -85,8 +85,14 @@ def get_range(server, sfirst, slast, himark):
     from our previous use of this server."""
     first = int(sfirst)
     last = int(slast)
+
+    if himark >= first and himark <= last:
+        # This is the normal state of affairs. Our himark lies between the
+        # server's high and low. We update first with our last himark.
+        first = himark
+
     # If more than 500 articles to read, prompt for how many.
-    howmany = last - himark
+    howmany = last - first
     if howmany > ARTPROMPT:
         prompt = "%s: " % server
         prompt += "How many articles to read? (0 - %s): " % howmany
@@ -98,21 +104,10 @@ def get_range(server, sfirst, slast, himark):
                 n = int(s)
             except ValueError:
                 n = -1
-        # This should always meet the first criteria in the next conditional.
-        himark = last - n
-
-    if himark >= first and himark <= last:
-        # This is the normal state of affairs. Our himark lies between the
-        # server's high and low.
-        return str(himark), slast
-    elif himark <= last:
-        # Our himark is lower than what the server can offer. Take all there
-        # is to have.
-        return sfirst, slast
-    else:
-        # Oh dear, we appear to be beyond the server.  Take all that's on
-        # offer. This will reset our count for next time.
-        return slast, slast
+        # We got an acceptable answer from our prompt.  Now set first to the
+        # number of articles we want to read.
+        first = last - n
+    return str(first), slast
 
 def list2multi_line_string(list):
     """Take a list and return it as a multi-line string."""
