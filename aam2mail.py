@@ -28,12 +28,12 @@ MAILDIR = os.path.join(APPDIR, 'maildir')
 MBOXFILE = os.path.join(APPDIR, 'mbox', 'mbox')
 
 # Store retrieved messages in Maildir format
-do_maildir = False
+DO_MAILDIR = False
 # Store retrieved message in mbox format
-do_mbox = True
+DO_MBOX = True
 # If True, all messages will be retreived instead of just those required.
 # Bad for performance, very good for anonymity.
-fetch_all = False
+FETCH_ALL = False
 # Prompt for how many articles to read from a server when greater than this
 # are available.
 ARTPROMPT = 500
@@ -135,14 +135,14 @@ if not os.path.isdir(SPOOLDIR):
     sys.exit(1)
 
 # If required, configured Maildir processing
-if do_maildir:
+if DO_MAILDIR:
     mail_path = os.path.split(MAILDIR)[0]
     if not os.path.exists(mail_path):
         sys.stdout.write("Error: Maildir path %s does not exist\n" % mail_path)
         sys.exit(1)
     maildir = mailbox.Maildir(MAILDIR, create = True)
 # If required, configure mbox processing
-if do_mbox:
+if DO_MBOX:
     mail_path = os.path.split(MBOXFILE)[0]
     if not os.path.exists(mail_path):
         sys.stdout.write("Error: Mbox path %s does not exist\n" % mail_path)
@@ -239,7 +239,7 @@ for server in himarks:
 
         # Retreive the actual payload.  This is amazingly inefficient as we
         # could just get the ones we want but that's bad for anonymity.
-        if fetch_all:
+        if FETCH_ALL:
             # The tuple returned by nntp.body includes the actual body as a
             # list object as the fourth element, hence [3].
             body = list2multi_line_string(news.body(msgid)[3])
@@ -260,21 +260,21 @@ for server in himarks:
                     wanted = True
                     break
         if wanted:
-            if not fetch_all:
+            if not FETCH_ALL:
                 body = list2multi_line_string(news.body(msgid)[3])
             # Create the message in the Maildir
-            if do_maildir:
+            if DO_MAILDIR:
                 maildir.add(MailPrep(msgid, sender, date, body, server))
-            if do_mbox:
+            if DO_MBOX:
                 mbox.add(MailPrep(msgid, sender, date, body, server))
             # Increment the received message count
             received += 1
     news.quit()
     # That went well, so update our recorded first/last article numbers.
     himarks[server] = int(last)
-if do_maildir:
+if DO_MAILDIR:
     maildir.close()
-if do_mbox:
+if DO_MBOX:
     mbox.close()
 sys.stdout.write("Received %d messages\n" % received)
 # Write the revised server db
