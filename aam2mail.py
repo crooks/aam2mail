@@ -116,10 +116,21 @@ def MailPrep(msgid, sender, date, body, server):
     payload += body
     return payload
 
-def isopt(cfg, opt):
-    if opt in cfg and opt[cfg]:
-        return True
-    return False
+def get_config():
+    """Read the configuration from a file and write it to a dictionary."""
+    cfgfile = os.path.join(ETCDIR, 'config')
+    if not os.path.isfile(cfgfile):
+        sys.stdout.write("Error: Config file %s does not exist\n" % cfgfile)
+        sys.exit(1)
+    cfg = file2dict(cfgfile)
+    opts = 'do_maildir do_mbox maildir mboxfile fetch_all fetch_limit'
+    optlist = opts.split(" ")
+    for opt in optlist:
+        if not opt in cfg: cfg[opt] = False
+    # These options depend on others.
+    if not cfg['maildir']: cfg['do_maildir'] = False
+    if not cfg['mboxfile']: cfg['do_mbox'] = False
+    return cfg
 
 # Do some basic checks that our required directories exist.
 if not os.path.isdir(ETCDIR):
@@ -129,20 +140,8 @@ if not os.path.isdir(SPOOLDIR):
     sys.stdout.write("Error: Config Path %s does not exist\n" % SPOOLDIR)
     sys.exit(1)
 
-cfgfile = os.path.join(ETCDIR, 'config')
-if not os.path.isfile(cfgfile):
-    sys.stdout.write("Error: Config file %s does not exist\n" % cfgfile)
-    sys.exit(1)
-cfg = file2dict(cfgfile)
-opts = 'do_maildir do_mbox maildir mboxfile fetch_all fetch_limit'
-optlist = opts.split(" ")
-for opt in optlist:
-    if not opt in cfg: cfg[opt] = False
-# These options depend on others.
-if not cfg['maildir']: cfg['do_maildir'] = False
-if not cfg['mboxfile']: cfg['do_mbox'] = False
-
-# If required, configured Maildir processing
+cfg = get_config()
+# If required, configure Maildir processing
 if cfg['do_maildir']:
     maildir = os.path.join(HOMEDIR, 'Maildir', cfg['maildir'])
     mail_path = os.path.split(maildir)[0]
@@ -158,9 +157,6 @@ if cfg['do_mbox']:
         sys.stdout.write("Error: Mbox path %s does not exist\n" % mail_path)
         sys.exit(1)
     mbox = mailbox.mbox(mboxfile, create = True)
-if not os.path.exists(SPOOLDIR):
-    sys.stdout.write("Error: Spool Path %s does not exist\n" % SPOOLDIR)
-    sys.exit(1)
 
 # This section defines what type of Subjects we're interested in.  The choices
 # are plain text, hsub and esub.  These are marked for processing if the
@@ -188,7 +184,7 @@ if not do_text and not do_hsub and not do_esub:
     sys.stdout.write("Error: No text, hsub or esub Subjects defined.\n")
     sys.exit(1)
 
-# Populate the himarks dict and sync is with our etc/servers text file.
+# Populate the himarks dict and sync it with our etc/servers text file.
 server_file = os.path.join(ETCDIR, "servers")
 himark_file = os.path.join(SPOOLDIR, "servers")
 servers = file2list(server_file)
@@ -287,7 +283,10 @@ if cfg['do_maildir']:
     maildir.close()
 if cfg['do_mbox']:
     mbox.close()
-sys.stdout.write("Received %d messages\n" % received)
+    msg = "Received %d messages.\n" % received
+    msg += "From %d servers, " % len(servers)
+    msg += "%d unique messages were processed.\n" % len(dedupe)
+sys.stdout.write(msg)
 # Write the revised server db
 dict2file(himark_file, himarks)
 
