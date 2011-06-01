@@ -1,0 +1,25 @@
+# If true, store received messages in Maildir format
+do_maildir 1
+
+# If true, store received messages in an mbox
+do_mbox 0
+
+# The maildir to store received messages in.  A root of ~/Maildir/ is
+# assumed.  If this isn't set, do_maildir is implicitly False.
+maildir nym
+
+# The mbox file to use under HOMEDIR.  If this isn't set, do_mbox is
+# implicitly False.
+mboxfile mbox
+
+# If True, all messages will be retreived instead of just those required.
+# Bad for performance, very good for anonymity. (Default: 1).
+#fetch_all 1
+
+# Maximum number of articles to fetch.  Be careful with this, especially
+# on your first run! (Default: 500)
+#fetch_limit 500
+
+# Define the interval (in seconds) at which to check for new messages.
+# (Default: 3600)
+#fetch_interval 3600

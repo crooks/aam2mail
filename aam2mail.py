@@ -44,7 +44,7 @@ class MyDaemon(Daemon):
         logging.info('Daemon started')
         while True:
             aam.main()
-            sleep(3600)
+            sleep(aam.cfg['fetch_interval'])
 
 class aam():
     def __init__(self):
@@ -111,18 +111,34 @@ class aam():
             logging.error(errmsg)
             sys.exit(1)
         cfg = self.file2dict(cfgfile)
-        opts = 'do_maildir do_mbox maildir mboxfile fetch_all fetch_limit'
+        # Configure some defaults (and some sanity)
+        if not 'fetch_all' in cfg: cfg['fetch_all'] = True
+        if not 'fetch_limit' in cfg: cfg['fetch_limit'] = 500
+        if not 'fetch_interval' in cfg: cfg['fetch_interval'] = 3600
+        if cfg['fetch_interval'] <= 900: cfg['fetch_interval'] = 900
+        # All these parameters will be defaulted to False.
+        opts = 'do_maildir do_mbox maildir mboxfile'
         optlist = opts.split(" ")
         for opt in optlist:
             if not opt in cfg: cfg[opt] = False
         # These options depend on others.
         if not cfg['maildir']: cfg['do_maildir'] = False
         if not cfg['mboxfile']: cfg['do_mbox'] = False
+        # We need to do one type of mailbox, otherwise, what's the point.
         if not cfg['do_maildir'] and not cfg['do_mbox']:
             errmsg = "No output: We're not configured to write Maildir or Mbox "
-            errmsg += "type files."
+            errmsg += "type files. Aborting."
             logging.error(errmsg)
             sys.exit(1)
+        logmes = "We are configured to process up to %s " % cfg['fetch_limit']
+        logmes += "messages, every %s seconds." % cfg['fetch_interval']
+        logging.info(logmes)
+        if cfg['fetch_all']:
+            logmes = "All messages will be retrieved prior to processing"
+            logging.info(logmes)
+        else:
+            logmes = "Only retrieving our own messages. Bad for anonymity!"
+            logging.warn(logmes)
         return cfg
 
     def file2list(self, filename):
@@ -197,23 +213,15 @@ class aam():
             # one (We don't want our last himark message, hence the +1).
             first = himark + 1
 
-        # If more than 500 articles to read, prompt for how many.
+        # Check we aren't receiving more messages than the configured limit.
         howmany = last - first
         if howmany > self.cfg['fetch_limit']:
-            prompt = "%s: " % server
-            prompt += "How many articles to read? (0 - %s): " % howmany
-            n = -1
-            while n < 0 or n > howmany:
-                s = raw_input(prompt)
-                # The raw_input function takes a string so we need to check it.
-                try:
-                    n = int(s)
-                except ValueError:
-                    n = -1
-            # We got an acceptable answer from our prompt.  Now set first to
-            # the number of articles we want to read.
-            first = last - n
-        return str(first), slast
+            logmes = "%s: There are %s unread messages. " % (server, howmany)
+            logmes += "Only processing %s, due to " % self.cfg['fetch_limit']
+            logmes += "configured fetch_limit."
+            logging.warn(logmes)
+            last = first + self.cfg['fetch_limit']
+        return str(first), str(last)
 
     def xover(self, server, spool_file, news):
         # group returns: response, count, first, last, name
