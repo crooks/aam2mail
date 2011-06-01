@@ -2,7 +2,7 @@
 #
 # vim: tabstop=4 expandtab shiftwidth=4 autoindent
 #
-# Copyright (C) 2009 Steve Crook <steve@mixmin.net>
+# Copyright (C) 2011 Steve Crook <steve@mixmin.net>
 # $Id$
 #
 # This program is free software; you can redistribute it and/or modify
