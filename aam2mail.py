@@ -19,26 +19,35 @@ import os.path
 import mailbox
 import sys
 import nntplib
+import socket
+import logging
+from time import sleep
+from daemon import Daemon
+
+
+# Can change loglevel here.
+LOGLEVEL = 'debug'
 
 HOMEDIR = os.path.expanduser('~')
 APPDIR = os.path.join(HOMEDIR, 'aam2mail')
 ETCDIR = os.path.join(APPDIR, 'etc')
+LOGDIR = os.path.join(APPDIR, 'log')
+PIDDIR = os.path.join(APPDIR, 'run')
 SPOOLDIR = os.path.join(APPDIR, 'spool')
+PIDFILE = os.path.join(PIDDIR, 'aam2mail.pid')
+ERRFILE = os.path.join(LOGDIR, 'err')
 
 # ----- Don't go beyond here unless you know what you're doing! -----
 
+class MyDaemon(Daemon):
+    def run(self):
+        logging.info('Daemon started')
+        while True:
+            aam.main()
+            sleep(3600)
+
 class aam():
     def __init__(self):
-        # Do some basic checks that our required directories exist.
-        if not os.path.isdir(ETCDIR):
-            errmsg = "Error: Config Path %s does not exist\n" % ETCDIR
-            sys.stderr.write(errmsg)
-            sys.exit(1)
-        if not os.path.isdir(SPOOLDIR):
-            errmsg = "Error: Config Path %s does not exist\n" % SPOOLDIR
-            sys.stderr.write(errmsg)
-            sys.exit(1)
-
         cfg = self.get_config()
 
         # This section defines what type of Subjects we're interested in.  The
@@ -52,25 +61,25 @@ class aam():
         if subj_list:
             do_text = True
             self.subj_list = subj_list
-            logmsg = "Checking %s plain text Subjects\n" % len(subj_list)
-            sys.stdout.write(logmsg)
+            logmsg = "Checking %s plain text Subjects" % len(subj_list)
+            logging.info(logmsg)
         hsub_list = self.file2list(os.path.join(ETCDIR, "subject_hsub"))
         if hsub_list:
             do_hsub = True
             import hsub
             self.hsub = hsub.hsub()
             self.hsub_list = hsub_list
-            sys.stdout.write("Checking %s hSub Subjects\n" % len(hsub_list))
+            logging.info("Checking %s hSub Subjects" % len(hsub_list))
         esub_list = self.file2list(os.path.join(ETCDIR, "subject_esub"))
         if esub_list:
             do_esub = True
             import esub
             self.esub = esub.esub()
             self.esub_list = esub_list
-            sys.stdout.write("Checking %s eSub Subjects\n" % len(esub_list))
+            logging.info("Checking %s eSub Subjects" % len(esub_list))
         if not do_text and not do_hsub and not do_esub:
-            errmsg = "Error: No text, hsub or esub Subjects defined.\n"
-            sys.stderr.write(errmsg)
+            errmsg = "No text, hsub or esub Subjects defined. Aborting."
+            logging.error(errmsg)
             sys.exit(1)
 
         # Populate the himarks dict and sync it with our etc/servers text file.
@@ -98,8 +107,8 @@ class aam():
         """Read the configuration from a file and write it to a dictionary."""
         cfgfile = os.path.join(ETCDIR, 'config')
         if not os.path.isfile(cfgfile):
-            errmsg = "Error: Config file %s does not exist\n" % cfgfile
-            sys.stdout.write(errmsg)
+            errmsg = "Error: Config file %s does not exist." % cfgfile
+            logging.error(errmsg)
             sys.exit(1)
         cfg = self.file2dict(cfgfile)
         opts = 'do_maildir do_mbox maildir mboxfile fetch_all fetch_limit'
@@ -110,9 +119,9 @@ class aam():
         if not cfg['maildir']: cfg['do_maildir'] = False
         if not cfg['mboxfile']: cfg['do_mbox'] = False
         if not cfg['do_maildir'] and not cfg['do_mbox']:
-            errmsg = "Error: We're not configured to write Maildir or Mbox "
-            errmsg += "type output."
-            sys.stderr.write(errmsg)
+            errmsg = "No output: We're not configured to write Maildir or Mbox "
+            errmsg += "type files."
+            logging.error(errmsg)
             sys.exit(1)
         return cfg
 
@@ -208,20 +217,29 @@ class aam():
 
     def xover(self, server, spool_file, news):
         # group returns: response, count, first, last, name
-        resp, grpcount, \
-        grpfirst, grplast, grpname = news.group('alt.anonymous.messages')
+        try:
+            resp, grpcount, grpfirst, \
+            grplast, grpname = news.group('alt.anonymous.messages')
+        except nntplib.NNTPTemporaryError, e:
+            logging.warn("%s: %s" % (server, e))
+            return 0
         first, last = self.get_range(server,
                                      grpfirst,
                                      grplast,
                                      self.himarks[server])
         msgcnt = (int(last) - int(first)) + 1
-        logmes = "Processing %d messages from %s\n" % (msgcnt, server)
-        sys.stdout.write(logmes)
+        logmes = "%s: Processing %d messages" % (server, msgcnt)
+        logging.debug(logmes)
         if msgcnt <= 0:
             return int(last)
         # The following xover line is often remarked out during testing as
         # this preserves a constant tmpfile.
-        news.xover(first, last, spool_file)
+        try:
+            resp, foo = news.xover(first, last, spool_file)
+        except nntplib.NNTPTemporaryError, e:
+            logging.warn("%s: %s" % (server, e))
+            return 0
+        logging.debug("Xover responded with: %s" % resp)
         return int(last)
 
     def retrieve(self, spool_file, news):
@@ -300,6 +318,7 @@ class aam():
     # created when we have multiple news servers defined.
         self.dedupe = []
         received = 0
+        srv_count = 0
         # Main loop of servers to process starts here.
         for server in self.himarks:
             # Assign a temporary file name for storing xover data.  The name is
@@ -307,25 +326,83 @@ class aam():
             spool = os.path.join(SPOOLDIR, server + '.tmp')
 
             # Establish a connection with the newsserver.
-            news = nntplib.NNTP(server, readermode = True)
+            logging.debug("%s: Establishing connection." % server)
+            try:
+                news = nntplib.NNTP(server, readermode = True)
+            except socket.gaierror, e:
+                logging.warn('%s: Connection error: %s' % (server, e))
+                continue
             himark = self.xover(server, spool, news)
+            # Zero isn't a valid himark so our xover routine can return it
+            # to indicate something went wrong.  Hopefully the something is
+            # logged.
+            if himark == 0:
+                continue
+            # If we get here, the assumption is that the server accepted our
+            # connection and provided any messages we asked for.
+            srv_count += 1
             #If the himark we get back from xover is the same as we supplied
             #it then there are no new messages to process.
             if himark == self.himarks[server]:
                 # we didn't fetch any messages so move on to the next server
-                sys.stdout.write("Nothing to be read.\n")
+                logging.debug("%s: No new messages." % server)
                 news.quit()
                 continue
             # Now we retrieve messages from the servers and test them.
             received += self.retrieve(spool, news)
             self.himarks[server] = himark
             news.quit()
-        msg = "Received %d messages.\n" % received
-        msg += "From %d servers, " % len(self.himarks)
-        msg += "%d unique messages were processed.\n" % len(self.dedupe)
-        sys.stdout.write(msg)
+        logging.info("Received %d messages." % received)
+        msg = "We processed %d unique messages " % len(self.dedupe)
+        msg += "from %d servers " % srv_count
+        msg += "(%d attempted)." % len(self.himarks)
+        logging.debug(msg)
         # Write the revised server db
+        logging.debug("Writing himarks to file.")
         self.dict2file(self.himark_file, self.himarks)
 
-test = aam()
-test.main()
+def init_logging():
+    loglevels = {'debug': logging.DEBUG, 'info': logging.INFO,
+                 'warn': logging.WARN, 'error': logging.ERROR}
+    # No dynamic logfile name as we're running as a daemon
+    logfile = os.path.join(LOGDIR, 'aam2mail')
+    logging.basicConfig(
+        filename=logfile,
+        level = loglevels[LOGLEVEL],
+        format = '%(asctime)s %(process)d %(levelname)s %(message)s',
+        datefmt = '%Y-%m-%d %H:%M:%S')
+
+if __name__ == "__main__":
+    # Do some basic checks that our required directories exist.
+    if not os.path.isdir(HOMEDIR):
+        errmsg = "Error: Home Directory %s does not exist\n" % HOMEDIR
+        sys.stderr.write(errmsg)
+        sys.exit(1)
+    for dirs in 'APPDIR ETCDIR LOGDIR PIDDIR SPOOLDIR'.split(" "):
+        d = eval(dirs)
+        if not os.path.isdir(d):
+            from os import mkdir
+            mkdir(d, 0700)
+    init_logging()
+    aam = aam()
+    daemon = MyDaemon(PIDFILE, '/dev/null', '/dev/null', ERRFILE)
+    # Process the start/stop args
+    if len(sys.argv) == 2:
+        if 'start' == sys.argv[1]:
+            logging.info('aam2mail started in Daemon mode')
+            daemon.start()
+        elif 'stop' == sys.argv[1]:
+            daemon.stop()
+            sys.stdout.write('aam2mail stopped\n')
+        elif 'restart' == sys.argv[1]:
+            daemon.restart()
+        elif 'dryrun' == sys.argv[1]:
+            # Run in console for testing
+            daemon.run()
+        else:
+            print "Unknown command"
+            sys.exit(2)
+        sys.exit(0)
+    else:
+        print "usage: %s start|stop|restart" % sys.argv[0]
+        sys.exit(2)
