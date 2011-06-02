@@ -360,7 +360,10 @@ class aam():
             received += self.retrieve(spool, news)
             self.himarks[server] = himark
             news.quit()
-        logging.info("Received %d messages." % received)
+        if received > 0:
+            logging.info("Received %d messages." % received)
+        else:
+            logging.debug("Received %d messages." % received)
         msg = "We processed %d unique messages " % len(self.dedupe)
         msg += "from %d servers " % srv_count
         msg += "(%d attempted)." % len(self.himarks)
