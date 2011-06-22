@@ -121,9 +121,23 @@ class aam():
         optlist = opts.split(" ")
         for opt in optlist:
             if not opt in cfg: cfg[opt] = False
-        # These options depend on others.
-        if not cfg['maildir']: cfg['do_maildir'] = False
-        if not cfg['mboxfile']: cfg['do_mbox'] = False
+        # We use HOMEDIR/Maildir as a root for maildir. If "maildir" is
+        # defined in config then we extend it.
+        if cfg['do_maildir']:
+            mdir_root = os.path.join(HOMEDIR, 'Maildir')
+            if cfg['maildir']:
+                mdir = os.path.join(mdir_root, cfg['maildir'])
+            else:
+                mdir = mdir_root
+            cfg['maildir'] = mdir
+        # If mobx output is required, we assume HOMEDIR/mbox unless config
+        # "mboxfile" instructs us to use a different filename.
+        if cfg['do_mbox']:
+            if cfg['mboxfile']:
+                mbox = os.path.join(HOMEDIR, cfg['mboxfile'])
+            else:
+                mbox = os.path.join(HOMEDIR, 'mbox')
+            cfg['mboxfile'] = mbox
         # We need to do one type of mailbox, otherwise, what's the point.
         if not cfg['do_maildir'] and not cfg['do_mbox']:
             errmsg = "No output: We're not configured to write Maildir or Mbox "
@@ -297,16 +311,15 @@ class aam():
                 # Create the message in the Maildir
                 if self.cfg['do_maildir']:
                     if not isopen_maildir:
-                        mdir = os.path.join(HOMEDIR, 'Maildir',
-                                            self.cfg['maildir'])
-                        maildir = mailbox.Maildir(mdir, create = True)
+                        maildir = mailbox.Maildir(self.cfg['maildir'],
+                                                  create = True)
                         isopen_maildir = True
                     maildir.add(msg)
                  # If required, configure mbox processing
                 if self.cfg['do_mbox']:
                     if not isopen_mbox:
-                        mboxfile = os.path.join(HOMEDIR, self.cfg['mboxfile'])
-                        mbox = mailbox.mbox(mboxfile, create = True)
+                        mbox = mailbox.mbox(self.cfg['mboxfile'],
+                                            create = True)
                         isopen_mbox = True
                     mbox.add(msg)
                 # Increment the received message count
@@ -337,6 +350,9 @@ class aam():
             logging.debug("%s: Establishing connection." % server)
             try:
                 news = nntplib.NNTP(server, readermode = True)
+            except nntplib.NNTPTemporaryError, e:
+                logging.warn('%s: Connection error: %s' % (server, e))
+                continue
             except socket.gaierror, e:
                 logging.warn('%s: Connection error: %s' % (server, e))
                 continue
