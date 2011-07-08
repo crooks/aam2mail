@@ -308,12 +308,12 @@ class aam():
                         wanted = True
                         break
             if wanted:
-                try:
-                    body = self.list2multi_line_string(news.body(msgid)[3])
-                except socket.error:
-                    logging.warn("Timeout retrieving %s" % msgid)
-                    continue
                 if not self.cfg['fetch_all']:
+                    try:
+                        body = self.list2multi_line_string(news.body(msgid)[3])
+                    except socket.error:
+                        logging.warn("Timeout retrieving %s" % msgid)
+                        continue
                 headers = self.mail_headers(msgid, sender, date)
                 msg = "%s\n%s" % (headers, body)
                 # Create the message in the Maildir
