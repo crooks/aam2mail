@@ -286,7 +286,11 @@ class aam():
             if self.cfg['fetch_all']:
                 # The tuple returned by nntp.body includes the actual body as a
                 # list object as the fourth element, hence [3].
-                body = self.list2multi_line_string(news.body(msgid)[3])
+                try:
+                    body = self.list2multi_line_string(news.body(msgid)[3])
+                except socket.error:
+                    logging.warn("Timeout retrieving %s" % msgid)
+                    continue
             wanted = False
             if self.do_text and subject in self.subj_list:
                 wanted = True
@@ -304,8 +308,12 @@ class aam():
                         wanted = True
                         break
             if wanted:
-                if not self.cfg['fetch_all']:
+                try:
                     body = self.list2multi_line_string(news.body(msgid)[3])
+                except socket.error:
+                    logging.warn("Timeout retrieving %s" % msgid)
+                    continue
+                if not self.cfg['fetch_all']:
                 headers = self.mail_headers(msgid, sender, date)
                 msg = "%s\n%s" % (headers, body)
                 # Create the message in the Maildir
