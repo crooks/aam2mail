@@ -1,0 +1,5 @@
+aam2mail.py is a Posix utility for retrieving encrypted, anonymized messages
+from the Usenet newsgroup alt.anonymous.messages. It searches the Newsgroup for
+messages with a matching Subject that can be plain-test, esub or hsub encoded.
+When a hit is found, the message it retrieved and stored in either Maildir or
+mbox format for processing with a standard mail client.
