@@ -2,7 +2,7 @@
 #
 # vim: tabstop=4 expandtab shiftwidth=4 autoindent
 #
-# Copyright (C) 2011 Steve Crook <steve@mixmin.net>
+# Copyright (C) 2009 Steve Crook <steve@mixmin.net>
 # $Id$
 #
 # This program is free software; you can redistribute it and/or modify
@@ -51,6 +51,7 @@ def main():
     key = "key"
     text = "text"
     esubs = []
+    esubs.append(e.bf(text, key))
     esubs.append("14857375e7174ae1dd83b80612f8a148e2777c7ae78c4c7d")
     esubs.append("fb56b638106688702dfed01fb763e3c9c29de2f46611eabe")
     esubs.append("7f338d465085b8912d15a857c0726c270655bad5e8859f2f")
