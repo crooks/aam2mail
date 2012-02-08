@@ -3,7 +3,7 @@
 # vim: tabstop=4 expandtab shiftwidth=4 autoindent
 #
 # Copyright (C) 2011 Steve Crook <steve@mixmin.net>
-# $Id$
+# $Id: aam2mail.py 21 2011-07-08 15:41:28Z crooks $
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by the
@@ -237,34 +237,34 @@ class aam():
             last = first + self.cfg['fetch_limit']
         return str(first), str(last)
 
-    def xover(self, server, spool_file, news):
+    def xover(self, spool_file):
         # group returns: response, count, first, last, name
         try:
             resp, grpcount, grpfirst, \
-            grplast, grpname = news.group('alt.anonymous.messages')
+            grplast, grpname = self.news.group('alt.anonymous.messages')
         except nntplib.NNTPTemporaryError, e:
-            logging.warn("%s: %s" % (server, e))
+            logging.warn("%s: %s" % (self.server, e))
             return 0
-        first, last = self.get_range(server,
+        first, last = self.get_range(self.server,
                                      grpfirst,
                                      grplast,
-                                     self.himarks[server])
+                                     self.himarks[self.server])
         msgcnt = (int(last) - int(first)) + 1
-        logmes = "%s: Processing %d messages" % (server, msgcnt)
+        logmes = "%s: Processing %d messages" % (self.server, msgcnt)
         logging.debug(logmes)
         if msgcnt <= 0:
             return int(last)
         # The following xover line is often remarked out during testing as
         # this preserves a constant tmpfile.
         try:
-            resp, foo = news.xover(first, last, spool_file)
+            resp, foo = self.news.xover(first, last, spool_file)
         except nntplib.NNTPTemporaryError, e:
-            logging.warn("%s: %s" % (server, e))
+            logging.warn("%s: %s" % (self.server, e))
             return 0
         logging.debug("Xover responded with: %s" % resp)
         return int(last)
 
-    def retrieve(self, spool_file, news):
+    def retrieve(self, spool_file):
         isopen_maildir = False
         isopen_mbox = False
         received = 0
@@ -284,13 +284,8 @@ class aam():
             # Retreive the actual payload.  This is amazingly inefficient as we
             # could just get the ones we want but that's bad for anonymity.
             if self.cfg['fetch_all']:
-                # The tuple returned by nntp.body includes the actual body as a
-                # list object as the fourth element, hence [3].
-                try:
-                    body = self.list2multi_line_string(news.body(msgid)[3])
-                except socket.error:
-                    logging.warn("Timeout retrieving %s" % msgid)
-                    continue
+                body = self.getbody(msgid)
+                if body is None: continue
             wanted = False
             if self.do_text and subject in self.subj_list:
                 wanted = True
@@ -298,6 +293,7 @@ class aam():
                 for subj in self.hsub_list:
                     if self.hsub.check(subj, subject):
                         wanted = True
+                        # break out of hsub matching. It can match only one.
                         break
             if not wanted and self.do_esub:
                 for subj in self.esub_list:
@@ -306,14 +302,12 @@ class aam():
                     encsub, key = subj.split("\t", 1)
                     if self.esub.check(encsub, key, subject):
                         wanted = True
+                        # break out of esub matching. It can match only one.
                         break
             if wanted:
                 if not self.cfg['fetch_all']:
-                    try:
-                        body = self.list2multi_line_string(news.body(msgid)[3])
-                    except socket.error:
-                        logging.warn("Timeout retrieving %s" % msgid)
-                        continue
+                    body = self.getbody(msgid)
+                    if body is None: continue
                 headers = self.mail_headers(msgid, sender, date)
                 msg = "%s\n%s" % (headers, body)
                 # Create the message in the Maildir
@@ -342,6 +336,26 @@ class aam():
             mbox.close()
         return received
 
+    def getbody(self, msgid):
+        # The tuple returned by nntp.body includes the actual body as a
+        # list object as the fourth element, hence [3].
+        try:
+            body = self.list2multi_line_string(self.news.body(msgid)[3])
+        except socket.error:
+            logging.warn("Timeout retrieving %s" % msgid)
+            return None
+        except nntplib.NNTPTemporaryError:
+            message = '%s: news.body returned a temporary ' % self.server
+            message += 'error: %s.' % sys.exc_info()[1]
+            logging.warn(message)
+            return None
+        except nntplib.NNTPPermanentError:
+            message = '%s: news.body returned a permanent ' % self.server
+            message += 'error: %s.' % sys.exc_info()[1]
+            logging.warn(message)
+            return None
+        return body
+
     def main(self):
     # Dedupe maintains a list of Message-IDs so that duplicate messages aren't
     # created when we have multiple news servers defined.
@@ -350,6 +364,8 @@ class aam():
         srv_count = 0
         # Main loop of servers to process starts here.
         for server in self.himarks:
+            # We use the server name so broadly, it's worth scoping it out.
+            self.server = server
             # Assign a temporary file name for storing xover data.  The name is
             # based on <tempdir>/<server>.tmp
             spool = os.path.join(SPOOLDIR, server + '.tmp')
@@ -357,14 +373,14 @@ class aam():
             # Establish a connection with the newsserver.
             logging.debug("%s: Establishing connection." % server)
             try:
-                news = nntplib.NNTP(server, readermode = True)
+                self.news = nntplib.NNTP(server, readermode = True)
             except nntplib.NNTPTemporaryError, e:
                 logging.warn('%s: Connection error: %s' % (server, e))
                 continue
             except socket.gaierror, e:
                 logging.warn('%s: Connection error: %s' % (server, e))
                 continue
-            himark = self.xover(server, spool, news)
+            himark = self.xover(spool)
             # Zero isn't a valid himark so our xover routine can return it
             # to indicate something went wrong.  Hopefully the something is
             # logged.
@@ -381,9 +397,9 @@ class aam():
                 news.quit()
                 continue
             # Now we retrieve messages from the servers and test them.
-            received += self.retrieve(spool, news)
+            received += self.retrieve(spool)
             self.himarks[server] = himark
-            news.quit()
+            self.news.quit()
         if received > 0:
             logging.info("Received %d messages." % received)
         else:
