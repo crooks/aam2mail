@@ -92,7 +92,10 @@ class aam():
             if server not in himarks:
                 himarks[server] = 0
         # Delete unwanted servers
-        for server in himarks:
+        # We have to take a copy of the keys as we can't delete keys that
+        # we're looping over.
+        hikeys = himarks.keys()
+        for server in hikeys:
             if server not in servers:
                 del himarks[server]
         # Set the scope on our variables
@@ -214,12 +217,13 @@ class aam():
         payload += "Message-ID: %s\n" % msgid
         return payload
 
-    def get_range(self, server, sfirst, slast, himark):
+    def get_range(self, sfirst, slast, himark):
         """Return a range of article numbers we should process.  We determine
         this by comparing the articles available on the server with those (if
         known) from our previous use of this server."""
         first = int(sfirst)
         last = int(slast)
+        limit = int(self.cfg['fetch_limit'])
 
         if himark >= first and himark <= last:
             # This is the normal state of affairs. Our himark lies between the
@@ -229,12 +233,13 @@ class aam():
 
         # Check we aren't receiving more messages than the configured limit.
         howmany = last - first
-        if howmany > self.cfg['fetch_limit']:
-            logmes = "%s: There are %s unread messages. " % (server, howmany)
-            logmes += "Only processing %s, due to " % self.cfg['fetch_limit']
+        if howmany > limit:
+            logmes = "%s: There are %s unread messages. " % (self.server,
+                                                             howmany)
+            logmes += "Only processing %s, due to " % limit
             logmes += "configured fetch_limit."
             logging.warn(logmes)
-            last = first + self.cfg['fetch_limit']
+            last = first + (limit - 1)
         return str(first), str(last)
 
     def xover(self, spool_file):
@@ -245,8 +250,7 @@ class aam():
         except nntplib.NNTPTemporaryError, e:
             logging.warn("%s: %s" % (self.server, e))
             return 0
-        first, last = self.get_range(self.server,
-                                     grpfirst,
+        first, last = self.get_range(grpfirst,
                                      grplast,
                                      self.himarks[self.server])
         msgcnt = (int(last) - int(first)) + 1
@@ -278,7 +282,10 @@ class aam():
             msgid = items[4]
 
             # Skip checking messages if we already have this Message-ID
+            # Not a great check as it's only relevent if all servers we
+            # pull from are in sync.
             if msgid in self.dedupe:
+                logging.debug("%s: Already processed." % msgid)
                 continue
 
             # Retreive the actual payload.  This is amazingly inefficient as we
