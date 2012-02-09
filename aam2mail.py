@@ -44,7 +44,8 @@ class MyDaemon(Daemon):
         logging.info('Daemon started')
         while True:
             aam.main()
-            sleep(aam.cfg['fetch_interval'])
+            interval = int(aam.cfg['fetch_interval'])
+            sleep(interval)
 
 class aam():
     def __init__(self):
