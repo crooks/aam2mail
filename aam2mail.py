@@ -241,6 +241,9 @@ class aam():
             logmes += "configured fetch_limit."
             logging.warn(logmes)
             last = first + (limit - 1)
+            #first = last - (limit - 1)
+        else:
+            logging.info("Fetching all %s available articles." % howmany + 1)
         return str(first), str(last)
 
     def xover(self, spool_file):
@@ -402,7 +405,7 @@ class aam():
             if himark == self.himarks[server]:
                 # we didn't fetch any messages so move on to the next server
                 logging.debug("%s: No new messages." % server)
-                news.quit()
+                self.news.quit()
                 continue
             # Now we retrieve messages from the servers and test them.
             received += self.retrieve(spool)
