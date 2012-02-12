@@ -30,6 +30,9 @@ def make_config():
     # By default, all the paths are subdirectories of the homedir.
     homedir = os.path.expanduser('~')
 
+    config.add_section('general')
+    config.set('general', 'loglevel', 'info')
+
     config.add_section('mailboxes')
     config.set('mailboxes', 'do_maildir', False)
     config.set('mailboxes', 'do_mbox', False)
@@ -65,35 +68,35 @@ def make_config():
         basedir = os.path.join(homedir, 'aam2mail')
         config.set('paths', 'basedir', basedir)
     if not os.path.isdir(basedir):
-        mkdir(basedir)
+        mkdir(basedir, 0700)
         sys.stdout.write("%s: Created\n" % basedir)
 
     if not config.has_option('paths', 'etc'):
         config.set('paths', 'etc', os.path.join(basedir, 'etc'))
     p = config.get('paths', 'etc')
     if not os.path.isdir(p):
-        mkdir(p)
+        mkdir(p, 0700)
         sys.stdout.write("%s: Created\n" % p)
 
     if not config.has_option('paths', 'log'):
         config.set('paths', 'log', os.path.join(basedir, 'log'))
     p = config.get('paths', 'log')
     if not os.path.isdir(p):
-        mkdir(p)
+        mkdir(p, 0700)
         sys.stdout.write("%s: Created\n" % p)
 
     if not config.has_option('paths', 'run'):
         config.set('paths', 'run', os.path.join(basedir, 'run'))
     p = config.get('paths', 'run')
     if not os.path.isdir(p):
-        mkdir(p)
+        mkdir(p, 0700)
         sys.stdout.write("%s: Created\n" % p)
 
     if not config.has_option('paths', 'spool'):
         config.set('paths', 'spool', os.path.join(basedir, 'spool'))
     p = config.get('paths', 'spool')
     if not os.path.isdir(p):
-        mkdir(p)
+        mkdir(p, 0700)
         sys.stdout.write("%s: Created\n" % p)
     return config
 
