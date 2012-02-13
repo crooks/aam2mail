@@ -47,6 +47,7 @@ def make_config():
     config.set('usenet', 'fetch_all', 'true')
     config.set('usenet', 'fetch_limit', 500)
     config.set('usenet', 'fetch_interval', 1 * 60 * 60)
+    config.set('usenet', 'process_backlog', 'false')
 
     # All sections need to be defined before we read the config file.
     config.add_section('paths')
@@ -98,6 +99,10 @@ def make_config():
     if not os.path.isdir(p):
         mkdir(p, 0700)
         sys.stdout.write("%s: Created\n" % p)
+
+    #with open('example.cfg', 'wb') as configfile:
+    #    config.write(configfile)
+
     return config
 
 

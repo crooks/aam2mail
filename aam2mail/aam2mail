@@ -178,8 +178,12 @@ class aam():
             logmes += "Only processing %s, due to " % limit
             logmes += "configured fetch_limit."
             logging.warn(logmes)
-            last = first + (limit - 1)
-            #first = last - (limit - 1)
+            # Do we want the entire spool in blocks of 'fetch_limit' or just
+            # the last 'fetch_limit' articles?
+            if config.getboolean('usenet', 'process_backlog'):
+                last = first + (limit - 1)
+            else:
+                first = last - (limit - 1)
         else:
             logging.info("Fetching all %s available articles." % (howmany + 1))
         return str(first), str(last)
