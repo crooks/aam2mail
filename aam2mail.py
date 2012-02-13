@@ -21,36 +21,21 @@ import sys
 import nntplib
 import socket
 import logging
+from Config import options
+from Config import config
 from time import sleep
 from daemon import Daemon
-
-
-# Can change loglevel here.
-LOGLEVEL = 'debug'
-
-HOMEDIR = os.path.expanduser('~')
-APPDIR = os.path.join(HOMEDIR, 'aam2mail')
-ETCDIR = os.path.join(APPDIR, 'etc')
-LOGDIR = os.path.join(APPDIR, 'log')
-PIDDIR = os.path.join(APPDIR, 'run')
-SPOOLDIR = os.path.join(APPDIR, 'spool')
-PIDFILE = os.path.join(PIDDIR, 'aam2mail.pid')
-ERRFILE = os.path.join(LOGDIR, 'err')
-
-# ----- Don't go beyond here unless you know what you're doing! -----
 
 class MyDaemon(Daemon):
     def run(self):
         logging.info('Daemon started')
         while True:
             aam.main()
-            interval = int(aam.cfg['fetch_interval'])
+            interval = config.getint('usenet', 'fetch_interval')
             sleep(interval)
 
 class aam():
     def __init__(self):
-        cfg = self.get_config()
-
         # This section defines what type of Subjects we're interested in.  The
         # choices are plain text, hsub and esub.  These are marked for
         # processing if the corresponding config file exists and contains
@@ -58,34 +43,39 @@ class aam():
         do_text = False
         do_hsub = False
         do_esub = False
-        subj_list = self.file2list(os.path.join(ETCDIR, "subject_text"))
+
+        subj_list = self.file2list(os.path.join(config.get('paths', 'etc'),
+                                                "subject_text"))
         if subj_list:
             do_text = True
             self.subj_list = subj_list
             logmsg = "Checking %s plain text Subjects" % len(subj_list)
             logging.info(logmsg)
-        hsub_list = self.file2list(os.path.join(ETCDIR, "subject_hsub"))
+        hsub_list = self.file2list(os.path.join(config.get('paths', 'etc'),
+                                                "subject_hsub"))
         if hsub_list:
             do_hsub = True
             import hsub
             self.hsub = hsub.hsub()
             self.hsub_list = hsub_list
             logging.info("Checking %s hSub Subjects" % len(hsub_list))
-        esub_list = self.file2list(os.path.join(ETCDIR, "subject_esub"))
+        esub_list = self.file2list(os.path.join(config.get('paths', 'etc'),
+                                                "subject_esub"))
         if esub_list:
             do_esub = True
             import esub
             self.esub = esub.esub()
             self.esub_list = esub_list
             logging.info("Checking %s eSub Subjects" % len(esub_list))
+
         if not do_text and not do_hsub and not do_esub:
             errmsg = "No text, hsub or esub Subjects defined. Aborting."
             logging.error(errmsg)
             sys.exit(1)
 
         # Populate the himarks dict and sync it with our etc/servers text file.
-        server_file = os.path.join(ETCDIR, "servers")
-        himark_file = os.path.join(SPOOLDIR, "servers")
+        server_file = os.path.join(config.get('paths', 'etc'), "servers")
+        himark_file = os.path.join(config.get('paths', 'spool'), "servers")
         servers = self.file2list(server_file)
         himarks = self.file2dict(himark_file, numeric = True)
         # Add missing servers
@@ -100,64 +90,11 @@ class aam():
             if server not in servers:
                 del himarks[server]
         # Set the scope on our variables
-        self.cfg = cfg
         self.do_text = do_text
         self.do_hsub = do_hsub
         self.do_esub = do_esub
         self.himarks = himarks
         self.himark_file = himark_file
-
-    def get_config(self):
-        """Read the configuration from a file and write it to a dictionary."""
-        cfgfile = os.path.join(ETCDIR, 'config')
-        if not os.path.isfile(cfgfile):
-            errmsg = "Error: Config file %s does not exist." % cfgfile
-            logging.error(errmsg)
-            sys.exit(1)
-        cfg = self.file2dict(cfgfile)
-        # Configure some defaults (and some sanity)
-        if not 'fetch_all' in cfg: cfg['fetch_all'] = True
-        if not 'fetch_limit' in cfg: cfg['fetch_limit'] = 500
-        if not 'fetch_interval' in cfg: cfg['fetch_interval'] = 3600
-        if cfg['fetch_interval'] <= 900: cfg['fetch_interval'] = 900
-        # All these parameters will be defaulted to False.
-        opts = 'do_maildir do_mbox maildir mboxfile'
-        optlist = opts.split(" ")
-        for opt in optlist:
-            if not opt in cfg: cfg[opt] = False
-        # We use HOMEDIR/Maildir as a root for maildir. If "maildir" is
-        # defined in config then we extend it.
-        if cfg['do_maildir']:
-            mdir_root = os.path.join(HOMEDIR, 'Maildir')
-            if cfg['maildir']:
-                mdir = os.path.join(mdir_root, cfg['maildir'])
-            else:
-                mdir = mdir_root
-            cfg['maildir'] = mdir
-        # If mobx output is required, we assume HOMEDIR/mbox unless config
-        # "mboxfile" instructs us to use a different filename.
-        if cfg['do_mbox']:
-            if cfg['mboxfile']:
-                mbox = os.path.join(HOMEDIR, cfg['mboxfile'])
-            else:
-                mbox = os.path.join(HOMEDIR, 'mbox')
-            cfg['mboxfile'] = mbox
-        # We need to do one type of mailbox, otherwise, what's the point.
-        if not cfg['do_maildir'] and not cfg['do_mbox']:
-            errmsg = "No output: We're not configured to write Maildir or Mbox "
-            errmsg += "type files. Aborting."
-            logging.error(errmsg)
-            sys.exit(1)
-        logmes = "We are configured to process up to %s " % cfg['fetch_limit']
-        logmes += "messages, every %s seconds." % cfg['fetch_interval']
-        logging.info(logmes)
-        if cfg['fetch_all']:
-            logmes = "All messages will be retrieved prior to processing"
-            logging.info(logmes)
-        else:
-            logmes = "Only retrieving our own messages. Bad for anonymity!"
-            logging.warn(logmes)
-        return cfg
 
     def file2list(self, filename):
         """Read a file and return each line as a list item. Note, if the file
@@ -224,7 +161,7 @@ class aam():
         known) from our previous use of this server."""
         first = int(sfirst)
         last = int(slast)
-        limit = int(self.cfg['fetch_limit'])
+        limit = config.getint('usenet', 'fetch_limit')
 
         if himark >= first and himark <= last:
             # This is the normal state of affairs. Our himark lies between the
@@ -243,7 +180,7 @@ class aam():
             last = first + (limit - 1)
             #first = last - (limit - 1)
         else:
-            logging.info("Fetching all %s available articles." % howmany + 1)
+            logging.info("Fetching all %s available articles." % (howmany + 1))
         return str(first), str(last)
 
     def xover(self, spool_file):
@@ -294,7 +231,7 @@ class aam():
 
             # Retreive the actual payload.  This is amazingly inefficient as we
             # could just get the ones we want but that's bad for anonymity.
-            if self.cfg['fetch_all']:
+            if config.getboolean('usenet', 'fetch_all'):
                 body = self.getbody(msgid)
                 if body is None: continue
             wanted = False
@@ -316,22 +253,23 @@ class aam():
                         # break out of esub matching. It can match only one.
                         break
             if wanted:
-                if not self.cfg['fetch_all']:
+                if not config.getboolean('usenet', 'fetch_all'):
                     body = self.getbody(msgid)
                     if body is None: continue
                 headers = self.mail_headers(msgid, sender, date)
                 msg = "%s\n%s" % (headers, body)
                 # Create the message in the Maildir
-                if self.cfg['do_maildir']:
+                if config.getboolean('mailboxes', 'do_maildir'):
                     if not isopen_maildir:
-                        maildir = mailbox.Maildir(self.cfg['maildir'],
+                        maildir = mailbox.Maildir(config.get('mailboxes',
+                                                             'maildir'),
                                                   create = True)
                         isopen_maildir = True
                     maildir.add(msg)
                  # If required, configure mbox processing
-                if self.cfg['do_mbox']:
+                if config.getboolean('mailboxes', 'do_mbox'):
                     if not isopen_mbox:
-                        mbox = mailbox.mbox(self.cfg['mboxfile'],
+                        mbox = mailbox.mbox(config.get('mailboxes', 'mbox'),
                                             create = True)
                         isopen_mbox = True
                     mbox.add(msg)
@@ -379,7 +317,8 @@ class aam():
             self.server = server
             # Assign a temporary file name for storing xover data.  The name is
             # based on <tempdir>/<server>.tmp
-            spool = os.path.join(SPOOLDIR, server + '.tmp')
+            spool = os.path.join(config.get('paths', 'spool'),
+                                 server + '.tmp')
 
             # Establish a connection with the newsserver.
             logging.debug("%s: Establishing connection." % server)
@@ -427,27 +366,19 @@ def init_logging():
     loglevels = {'debug': logging.DEBUG, 'info': logging.INFO,
                  'warn': logging.WARN, 'error': logging.ERROR}
     # No dynamic logfile name as we're running as a daemon
-    logfile = os.path.join(LOGDIR, 'aam2mail')
+    logfile = os.path.join(config.get('paths', 'log'), 'aam2mail')
     logging.basicConfig(
         filename=logfile,
-        level = loglevels[LOGLEVEL],
+        level = loglevels[config.get('general', 'loglevel')],
         format = '%(asctime)s %(process)d %(levelname)s %(message)s',
         datefmt = '%Y-%m-%d %H:%M:%S')
 
 if __name__ == "__main__":
-    # Do some basic checks that our required directories exist.
-    if not os.path.isdir(HOMEDIR):
-        errmsg = "Error: Home Directory %s does not exist\n" % HOMEDIR
-        sys.stderr.write(errmsg)
-        sys.exit(1)
-    for dirs in 'APPDIR ETCDIR LOGDIR PIDDIR SPOOLDIR'.split(" "):
-        d = eval(dirs)
-        if not os.path.isdir(d):
-            from os import mkdir
-            mkdir(d, 0700)
     init_logging()
     aam = aam()
-    daemon = MyDaemon(PIDFILE, '/dev/null', '/dev/null', ERRFILE)
+    pidfile = os.path.join(config.get('paths', 'run'), 'aam2mail.pid')
+    errfile = os.path.join(config.get('paths', 'log'), 'aam2mail.err')
+    daemon = MyDaemon(pidfile, '/dev/null', '/dev/null', errfile)
     # Process the start/stop args
     if len(sys.argv) == 2:
         if 'start' == sys.argv[1]:

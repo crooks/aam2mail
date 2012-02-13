@@ -34,13 +34,13 @@ def make_config():
     config.set('general', 'loglevel', 'info')
 
     config.add_section('mailboxes')
-    config.set('mailboxes', 'do_maildir', False)
-    config.set('mailboxes', 'do_mbox', False)
+    config.set('mailboxes', 'do_maildir', 'true')
+    config.set('mailboxes', 'do_mbox', 'false')
     config.set('mailboxes', 'maildir', os.path.join(homedir, 'Maildir'))
     config.set('mailboxes', 'mbox', os.path.join(homedir, 'mbox'))
 
     config.add_section('usenet')
-    config.set('usenet', 'fetch_all', True)
+    config.set('usenet', 'fetch_all', 'true')
     config.set('usenet', 'fetch_limit', 500)
     config.set('usenet', 'fetch_interval', 1 * 60 * 60)
 
@@ -50,15 +50,11 @@ def make_config():
     # Try and process the .aam2mailrc file.  If it doesn't exist, we bailout
     # as some options are compulsory.
     if not options.rc:
-        #configfile = os.path.join(homedir, '.nymservrc')
         configfile = os.path.join(homedir, '.aam2mailrc')
     else:
         configfile = options.rc
     if os.path.isfile(configfile):
         config.read(configfile)
-    else:
-        sys.stdout.write("%s: Config file does not exist\n" % configfile)
-        sys.exit(1)
 
     # We have to set basedir _after_ reading the config file because
     # other paths need to default to subpaths of it.
