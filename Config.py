@@ -40,6 +40,7 @@ def make_config():
     config.set('mailboxes', 'mbox', os.path.join(homedir, 'mbox'))
 
     config.add_section('usenet')
+    config.set('usenet', 'newsgroup', 'alt.anonymous.messages')
     config.set('usenet', 'fetch_all', 'true')
     config.set('usenet', 'fetch_limit', 500)
     config.set('usenet', 'fetch_interval', 1 * 60 * 60)

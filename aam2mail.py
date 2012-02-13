@@ -187,7 +187,8 @@ class aam():
         # group returns: response, count, first, last, name
         try:
             resp, grpcount, grpfirst, \
-            grplast, grpname = self.news.group('alt.anonymous.messages')
+            grplast, grpname = self.news.group(config.get('usenet',
+                                                          'newsgroup'))
         except nntplib.NNTPTemporaryError, e:
             logging.warn("%s: %s" % (self.server, e))
             return 0
