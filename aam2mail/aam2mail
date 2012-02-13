@@ -57,7 +57,7 @@ class aam():
         if hsub_list:
             do_hsub = True
             import aam2mail.hsub
-            self.hsub = hsub.hsub()
+            self.hsub = aam2mail.hsub.hsub()
             self.hsub_list = hsub_list
             logging.info("Checking %s hSub Subjects" % len(hsub_list))
         esub_list = self.file2list(os.path.join(config.get('paths', 'etc'),
@@ -65,7 +65,7 @@ class aam():
         if esub_list:
             do_esub = True
             import aam2mail.esub
-            self.esub = esub.esub()
+            self.esub = aam2mail.esub.esub()
             self.esub_list = esub_list
             logging.info("Checking %s eSub Subjects" % len(esub_list))
 
