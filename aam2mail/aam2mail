@@ -23,8 +23,8 @@ import sys
 import nntplib
 import socket
 import logging
-from Config import options
-from Config import config
+from aam2mail.Config import options
+from aam2mail.Config import config
 from time import sleep
 from daemon import Daemon
 
@@ -56,7 +56,7 @@ class aam():
                                                 "subject_hsub"))
         if hsub_list:
             do_hsub = True
-            import hsub
+            import aam2mail.hsub
             self.hsub = hsub.hsub()
             self.hsub_list = hsub_list
             logging.info("Checking %s hSub Subjects" % len(hsub_list))
@@ -64,7 +64,7 @@ class aam():
                                                 "subject_esub"))
         if esub_list:
             do_esub = True
-            import esub
+            import aam2mail.esub
             self.esub = esub.esub()
             self.esub_list = esub_list
             logging.info("Checking %s eSub Subjects" % len(esub_list))
