@@ -28,7 +28,6 @@ from daemon import Daemon
 
 class MyDaemon(Daemon):
     def run(self):
-        logging.info('Daemon started')
         while True:
             aam.main()
             interval = config.getint('usenet', 'fetch_interval')
@@ -367,7 +366,7 @@ def init_logging():
     loglevels = {'debug': logging.DEBUG, 'info': logging.INFO,
                  'warn': logging.WARN, 'error': logging.ERROR}
     # No dynamic logfile name as we're running as a daemon
-    logfile = os.path.join(config.get('paths', 'log'), 'aam2mail')
+    logfile = os.path.join(config.get('paths', 'log'), 'aam2mail.log')
     logging.basicConfig(
         filename=logfile,
         level = loglevels[config.get('general', 'loglevel')],
@@ -381,22 +380,17 @@ if __name__ == "__main__":
     errfile = os.path.join(config.get('paths', 'log'), 'aam2mail.err')
     daemon = MyDaemon(pidfile, '/dev/null', '/dev/null', errfile)
     # Process the start/stop args
-    if len(sys.argv) == 2:
-        if 'start' == sys.argv[1]:
-            logging.info('aam2mail started in Daemon mode')
-            daemon.start()
-        elif 'stop' == sys.argv[1]:
-            daemon.stop()
-            sys.stdout.write('aam2mail stopped\n')
-        elif 'restart' == sys.argv[1]:
-            daemon.restart()
-        elif 'dryrun' == sys.argv[1]:
-            # Run in console for testing
-            daemon.run()
-        else:
-            print "Unknown command"
-            sys.exit(2)
-        sys.exit(0)
+    if options.start:
+        logging.info('Started in Daemon mode')
+        sys.stdout.write('aam2mail: Starting in Daemon Mode\n')
+        daemon.start()
+    elif options.stop:
+        daemon.stop()
+        logging.info("Stopping Daemon")
+        sys.stdout.write('aam2mail stopped\n')
+    elif options.restart:
+        logging.info("Restarting Daemon")
+        daemon.restart()
     else:
-        print "usage: %s start|stop|restart" % sys.argv[0]
-        sys.exit(2)
+        # Run in console for testing
+        daemon.run()
