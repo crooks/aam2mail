@@ -31,5 +31,5 @@ setup(
     scripts = ['aam2mail/aam2mail',],
     license = 'GPLv3',
     url = 'https://github.com/crooks/aam2mail',
-    long_description = open('README.txt').read(),
+    long_description = open('README').read(),
 )
