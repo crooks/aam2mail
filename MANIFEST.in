@@ -2,3 +2,4 @@ include README
 include CHANGES
 include LICENSE
 include INSTALL
+include aam2mail/config.sample

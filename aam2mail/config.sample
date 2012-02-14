@@ -1,0 +1,74 @@
+# This file provides an overview of the options available to the aam2mail
+# utility.  To use it, please save the file to your home directory and rename
+# it .aam2mailrc.
+
+# Note: In all instances, the options shown in the following examples are the
+# defaults.  If no configuration file is provided, these settings are assumed.
+
+
+[general]
+## loglevel can be error, warn, info or debug in increasing levels of
+## verbosity.
+#loglevel = info
+
+[paths]
+# The basedir can be defined as a prefix for all the following path
+# definitions.  By default, it is defined as ~/aam2mail, thus making all the
+# other directories relative to that entry-point.
+#basedir = <homedir>/aam2mail
+
+## Define where xover data and internal data relating to newsserver status
+## should be stored.
+#spool = <homedir>/aam2mail/spool
+
+## Used-defined files that effect how the aam2mail utility should be used.
+## These files can contain sensitive information, such as the esub or hsub keys
+## used to identify messages owned by the user.
+#etc = <homedir>/aam2mail/etc
+
+## Where the aam2mail.pid file will be written, when running in Daemon mode.
+#run = <homedir>/aam2mail/run
+
+## Log information will be written to this directory.
+#log = <homedir>/aam2mail/log
+
+[usenet]
+## The Usenet Newsgroup to retrieve messages from.  It's very unlikely you'd
+## want to change this.
+#newsgroup = alt.anonymous.messages
+
+## When aam2mail is configured to use a new newsserver, it will, by default,
+## only process the number of messages defined in 'fetch_limit'. Starting with
+## the last message in the spool minus that number. If this setting is True,
+## the utility will retrieve every message on the server spool in batches of
+## 'fetch_limit'.  The interval between batch runs is defined in
+## 'fetch_interval'.
+#process_backlog = false
+
+## aam2mail can identify messages for the user by examining just the xover
+## data.  This is fast but not good for anonymity.  By default the utility
+## will fetch bodies for all messages on the server, regardless of their
+## ownership.
+#fetch_all = true
+
+## How frequently, in seconds, aam2mail should check for new messages.
+#fetch_interval = 3600
+
+## Up to how many messages should be processed per each 'fetch_interval'.
+#fetch_limit = 500
+
+[mailboxes]
+## Store identified messages in mbox format.  If this is set to 'true',
+## messages will be stored in *both* mbox and Maildir format unless
+## 'do_maildir' is explicitly set false.
+#do_mbox = false
+
+## Store identified messages in Maildir format.
+#do_maildir = true
+
+## Where to store mbox formatted messages.  This setting is ignored unless
+## 'do_mbox' is true.
+#mbox = <homedir>/mbox
+
+## Where to store Maildir formatted messages while 'do_maildir' is true.
+#maildir = <homedir>/Maildir/
