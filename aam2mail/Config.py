@@ -26,6 +26,8 @@ import os.path
 from os import mkdir
 import sys
 
+WRITE_DEFAULT_CONFIG = False
+
 def make_config():
     # Configure the Config Parser.
     config = ConfigParser.RawConfigParser()
@@ -58,7 +60,7 @@ def make_config():
         configfile = os.path.join(homedir, '.aam2mailrc')
     else:
         configfile = options.rc
-    if os.path.isfile(configfile):
+    if not WRITE_DEFAULT_CONFIG and os.path.isfile(configfile):
         config.read(configfile)
 
     # We have to set basedir _after_ reading the config file because
@@ -100,8 +102,9 @@ def make_config():
         mkdir(p, 0700)
         sys.stdout.write("%s: Created\n" % p)
 
-    #with open('example.cfg', 'wb') as configfile:
-    #    config.write(configfile)
+    if WRITE_DEFAULT_CONFIG:
+        with open('config.sample', 'wb') as configfile:
+            config.write(configfile)
 
     return config
 
