@@ -28,6 +28,7 @@ import sys
 
 WRITE_DEFAULT_CONFIG = False
 
+
 def make_config():
     # Configure the Config Parser.
     config = ConfigParser.RawConfigParser()
@@ -113,14 +114,14 @@ def make_config():
 # the config file.
 parser = OptionParser()
 
-parser.add_option("--config", dest = "rc",
-                      help = "Override .aam2mailrc location")
-parser.add_option("--start", dest = "start", action = "store_true",
-                      help = "Start the aam2mail daemon")
-parser.add_option("--stop", dest = "stop", action = "store_true",
-                      help = "Stop the aam2mail daemon")
-parser.add_option("--restart", dest = "restart", action = "store_true",
-                      help = "Restart the aam2mail daemon")
+parser.add_option("--config", dest="rc",
+                      help="Override .aam2mailrc location")
+parser.add_option("--start", dest="start", action="store_true",
+                      help="Start the aam2mail daemon")
+parser.add_option("--stop", dest="stop", action="store_true",
+                      help="Stop the aam2mail daemon")
+parser.add_option("--restart", dest="restart", action="store_true",
+                      help="Restart the aam2mail daemon")
 
 (options, args) = parser.parse_args()
 config = make_config()

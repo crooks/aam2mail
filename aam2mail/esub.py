@@ -21,16 +21,20 @@ from Crypto.Cipher import Blowfish
 from hashlib import md5
 from os import urandom
 
+
 class esub:
-    def bf(self, text, key, iv = None):
+    def bf(self, text, key, iv=None):
         """Produce a 192bit Encrypted Subject. The first 64 bits are the
         Initialization vector used in the Blowfish CFB Mode.  The Subject text
         is MD5 hashed and then encrypted using an MD5 hash of the Key."""
         texthash = md5(text).digest()
         keyhash = md5(key).digest()
-        if iv is None: iv = urandom(8)
-        crypt1 = Blowfish.new(keyhash, Blowfish.MODE_OFB,iv).encrypt(texthash)[:8]
-        crypt2 = Blowfish.new(keyhash, Blowfish.MODE_OFB,crypt1).encrypt(texthash[8:])
+        if iv is None:
+            iv = urandom(8)
+        crypt1 = Blowfish.new(keyhash,
+                              Blowfish.MODE_OFB, iv).encrypt(texthash)[:8]
+        crypt2 = Blowfish.new(keyhash,
+                              Blowfish.MODE_OFB, crypt1).encrypt(texthash[8:])
         return (iv + crypt1 + crypt2).encode('hex')
 
     def check(self, text, key, esub):
@@ -38,13 +42,15 @@ class esub:
         using a passed Subject and Key.  If the resulting eSub collides with
         the supplied one, return True."""
         # All eSubs should be 48 bytes long
-        if len(esub) != 48: return False
+        if len(esub) != 48:
+            return False
         # The 64bit IV is hex encoded (16 digits) at the start of the esub.
         try:
             iv = esub[:16].decode('hex')
         except TypeError:
             return False
         return (self.bf(text, key, iv) == esub)
+
 
 def main():
     """Only used for testing purposes.  We Generate an eSub and then check it

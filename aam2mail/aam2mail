@@ -28,12 +28,14 @@ from aam2mail.Config import config
 from time import sleep
 from aam2mail.daemon import Daemon
 
+
 class MyDaemon(Daemon):
     def run(self):
         while True:
             aam.main()
             interval = config.getint('usenet', 'fetch_interval')
             sleep(interval)
+
 
 class aam():
     def __init__(self):
@@ -78,7 +80,7 @@ class aam():
         server_file = os.path.join(config.get('paths', 'etc'), "servers")
         himark_file = os.path.join(config.get('paths', 'spool'), "servers")
         servers = self.file2list(server_file)
-        himarks = self.file2dict(himark_file, numeric = True)
+        himarks = self.file2dict(himark_file, numeric=True)
         # Add missing servers
         for server in servers:
             if server not in himarks:
@@ -112,7 +114,7 @@ class aam():
             readlist.close()
         return items
 
-    def file2dict(self, filename, numeric = False):
+    def file2dict(self, filename, numeric=False):
         """Read a file and split each line at the first space encountered. The
         first element is the key, the rest is the content. If numeric is True
         then only integer values will be acccepted."""
@@ -239,7 +241,8 @@ class aam():
             # could just get the ones we want but that's bad for anonymity.
             if config.getboolean('usenet', 'fetch_all'):
                 body = self.getbody(msgid)
-                if body is None: continue
+                if body is None:
+                    continue
             wanted = False
             if self.do_text and subject in self.subj_list:
                 wanted = True
@@ -261,7 +264,8 @@ class aam():
             if wanted:
                 if not config.getboolean('usenet', 'fetch_all'):
                     body = self.getbody(msgid)
-                    if body is None: continue
+                    if body is None:
+                        continue
                 headers = self.mail_headers(msgid, sender, date)
                 msg = "%s\n%s" % (headers, body)
                 # Create the message in the Maildir
@@ -269,14 +273,14 @@ class aam():
                     if not isopen_maildir:
                         maildir = mailbox.Maildir(config.get('mailboxes',
                                                              'maildir'),
-                                                  create = True)
+                                                  create=True)
                         isopen_maildir = True
                     maildir.add(msg)
                  # If required, configure mbox processing
                 if config.getboolean('mailboxes', 'do_mbox'):
                     if not isopen_mbox:
                         mbox = mailbox.mbox(config.get('mailboxes', 'mbox'),
-                                            create = True)
+                                            create=True)
                         isopen_mbox = True
                     mbox.add(msg)
                 # Increment the received message count
@@ -329,7 +333,7 @@ class aam():
             # Establish a connection with the newsserver.
             logging.debug("%s: Establishing connection." % server)
             try:
-                self.news = nntplib.NNTP(server, readermode = True)
+                self.news = nntplib.NNTP(server, readermode=True)
             except nntplib.NNTPTemporaryError, e:
                 logging.warn('%s: Connection error: %s' % (server, e))
                 continue
@@ -368,6 +372,7 @@ class aam():
         logging.debug("Writing himarks to file.")
         self.dict2file(self.himark_file, self.himarks)
 
+
 def init_logging():
     loglevels = {'debug': logging.DEBUG, 'info': logging.INFO,
                  'warn': logging.WARN, 'error': logging.ERROR}
@@ -375,9 +380,9 @@ def init_logging():
     logfile = os.path.join(config.get('paths', 'log'), 'aam2mail.log')
     logging.basicConfig(
         filename=logfile,
-        level = loglevels[config.get('general', 'loglevel')],
-        format = '%(asctime)s %(process)d %(levelname)s %(message)s',
-        datefmt = '%Y-%m-%d %H:%M:%S')
+        level=loglevels[config.get('general', 'loglevel')],
+        format='%(asctime)s %(process)d %(levelname)s %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S')
 
 if __name__ == "__main__":
     init_logging()

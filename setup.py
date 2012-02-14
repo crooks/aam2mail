@@ -23,13 +23,13 @@
 from distutils.core import setup
 
 setup(
-    name = 'aam2mail',
-    author = 'Steve Crook',
-    author_email = 'steve@mixmin.net',
-    version = '0.1',
-    packages = ['aam2mail',],
-    scripts = ['aam2mail/aam2mail',],
-    license = 'GPLv3',
-    url = 'https://github.com/crooks/aam2mail',
-    long_description = open('README').read(),
+    name='aam2mail',
+    author='Steve Crook',
+    author_email='steve@mixmin.net',
+    version='0.1',
+    packages=['aam2mail', ],
+    scripts=['aam2mail/aam2mail', ],
+    license='GPLv3',
+    url='https://github.com/crooks/aam2mail',
+    long_description=open('README').read(),
 )
