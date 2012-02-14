@@ -1,0 +1,9 @@
+The following command will install the aam2mail program:-
+
+	python setup.py install
+
+This will need to be run by a user with write permissions to the Python
+dist-packages directory. In most cases this will be root.  See the MANIFEST
+file for a list of the files that will be installed.
+
+That's it, you're done!
