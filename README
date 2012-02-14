@@ -16,7 +16,10 @@ errors are written to logfiles aam2mail.log and aam2mail.err.
 This is beta software and may occasionally crash.  Please provide feedback,
 including Traceback details if available.  Your efforts will help improve
 future releases of the application.  Please see the CHANGES file for details of
-updates between releases.
+updates between releases.  If you'd like to get involved in development
+activities, the repository, containing development versions, can be found at:
+
+https://github.com/crooks/aam2mail
 
 This application is released under the GPL license.  Please see the included
 LICENSE file for Terms & Conditions of its usage.
