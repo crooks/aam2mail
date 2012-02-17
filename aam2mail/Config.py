@@ -22,8 +22,7 @@
 
 import ConfigParser
 from optparse import OptionParser
-import os.path
-from os import mkdir
+import os
 import sys
 
 WRITE_DEFAULT_CONFIG = False
@@ -57,10 +56,12 @@ def make_config():
 
     # Try and process the .aam2mailrc file.  If it doesn't exist, we bailout
     # as some options are compulsory.
-    if not options.rc:
-        configfile = os.path.join(homedir, '.aam2mailrc')
-    else:
+    if options.rc:
         configfile = options.rc
+    elif 'AAM2MAIL' in os.environ:
+        configfile = os.environ['AAM2MAIL']
+    else:
+        configfile = os.path.join(homedir, '.aam2mailrc')
     if not WRITE_DEFAULT_CONFIG and os.path.isfile(configfile):
         config.read(configfile)
 
@@ -72,35 +73,35 @@ def make_config():
         basedir = os.path.join(homedir, 'aam2mail')
         config.set('paths', 'basedir', basedir)
     if not os.path.isdir(basedir):
-        mkdir(basedir, 0700)
+        os.mkdir(basedir, 0700)
         sys.stdout.write("%s: Created\n" % basedir)
 
     if not config.has_option('paths', 'etc'):
         config.set('paths', 'etc', os.path.join(basedir, 'etc'))
     p = config.get('paths', 'etc')
     if not os.path.isdir(p):
-        mkdir(p, 0700)
+        os.mkdir(p, 0700)
         sys.stdout.write("%s: Created\n" % p)
 
     if not config.has_option('paths', 'log'):
         config.set('paths', 'log', os.path.join(basedir, 'log'))
     p = config.get('paths', 'log')
     if not os.path.isdir(p):
-        mkdir(p, 0700)
+        os.mkdir(p, 0700)
         sys.stdout.write("%s: Created\n" % p)
 
     if not config.has_option('paths', 'run'):
         config.set('paths', 'run', os.path.join(basedir, 'run'))
     p = config.get('paths', 'run')
     if not os.path.isdir(p):
-        mkdir(p, 0700)
+        os.mkdir(p, 0700)
         sys.stdout.write("%s: Created\n" % p)
 
     if not config.has_option('paths', 'spool'):
         config.set('paths', 'spool', os.path.join(basedir, 'spool'))
     p = config.get('paths', 'spool')
     if not os.path.isdir(p):
-        mkdir(p, 0700)
+        os.mkdir(p, 0700)
         sys.stdout.write("%s: Created\n" % p)
 
     if WRITE_DEFAULT_CONFIG:
