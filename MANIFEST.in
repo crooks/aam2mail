@@ -3,3 +3,4 @@ include CHANGES
 include LICENSE
 include INSTALL
 include aam2mail/config.sample
+include man/aam2mail.1

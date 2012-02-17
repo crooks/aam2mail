@@ -32,4 +32,5 @@ setup(
     license='GPLv3',
     url='https://github.com/crooks/aam2mail',
     long_description=open('README').read(),
+    data_files=[('man/man1', ['man/aam2mail.1'])],
 )

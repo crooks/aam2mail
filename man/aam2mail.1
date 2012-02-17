@@ -1,0 +1,110 @@
+.\" Process this file with
+.\" groff -man -Tascii foo.1
+.\"
+.TH aam2mail 1 "March 2012" Linux "User Manuals"
+.SH NAME
+aam2mail \- Anonymous shared mailbox scanner
+.SH SYNOPSIS
+.B aam2mail
+{ --start | --stop | --restart | --help }
+.SH DESCRIPTION
+.B aam2mail
+extracts messages, by subject, from a Usenet Newsgroup. For many years the
+Newsgroup alt.anonymous.messages has been used as a shared mailbox for users of
+anonymous messaging solutions.  Messages for multiple users are delivered to
+the mailbox and then extracted by their rightful recipient using Subject header
+matching.
+.P
+Subjects can be identified in plain-text but more frequently a form of encoding
+is employed. This encoding prevents messages being linked to a common recipient
+by the Subject header's content.  There are two supported encoding methods,
+known as eSub and hSub.  They both work by generating a hash consisting of a
+private secret and public information contained within the message's Subject
+header. When a collision occurs, the message is known to belong to the holder
+of the secret.
+.P
+.B aam2mail
+allows the user to define multiple sources (Newsservers) for retrieval of
+messages from alt.anonymous.messages. Messages are then read from all the
+sources, and scanned for Subject header collisions.  Any number of plain-text,
+eSub or hSub secrets can be supplied for matching purposes.  Once a message
+is identifed, it is stored locally in either Maildir or mbox format for
+decryption my a standard MUA, such as \fBMutt\fP.
+.SH OPTIONS
+.TP
+.B --config
+Override the default ~/.aam2mail configuration file.
+.TP
+.B --start
+Start aam2mail as a daemon
+.TP
+.B --stop\ \ 
+Stop the aam2mail daemon. No further actions will be performed until the
+daemon is restarted or aam2mail is manually run.
+.TP
+.B --restart
+Restart the aam2mail daemon.  The daemon should be restarted after a
+configuration change or a logrotate.
+.TP
+.B --help\ 
+Display a short help message
+.SH FILES
+This section describes the user-configurable files in \fBaam2mail\fP.
+.TP
+.B .aam2mailrc
+This is the main configuration file.  It defines all the options relating
+to the function of aam2mail, including the options to override the locations
+of all the other configuration files.  By default \fB.aam2mail\fP resides in
+$HOME.  This can be overridden with the \fB--config\fP option.
+.P
+.IP
+The \fB.aam2mailrc\fP file is only required if a default option needs to be
+overridden.  A same file \fBconfig.sample\fP is provided with the distribution
+and contains details of each supported option.
+.TP
+.B servers
+The servers file contains a list of the full-qualified hostnames for the
+newsservers that \fBaam2mail\fP should download from. One newsserver is
+normally sufficient but more will reduce the minor risk of lost messages.
+Default=$HOME/.aam2mailrc
+.P
+.IP
+.B aam2mail
+will attempt to deduplicate downloading of messages when working with multiple
+newsservers.  This is most effective if the newsservers are synchronized. I.e.
+The same messages are being read from each server during the same operation.
+This may not be the case if \fBfetch_limit\fP is less than the number of
+messages on the server and \fBprocess_backlog\fP is true.
+Default=$HOME/aam2mail/etc/sservers
+.P
+.TP
+.B subject_plain
+Contains a list of the plain-text subjects the user would like to retrieve from
+the newsserver. This file is case-sensitive.
+Default=$HOME/aam2mail/etc/subject_plain
+.P
+.TP
+.B subject_hsub
+Contains a list of the hSub secrets that \fBaam2mail\fP should generate
+collisions for when looking for subject matches.
+Default=$HOME/aam2mail/etc/subject_hsub
+.P
+.TP
+.B subject_esub
+Contains a list of eSub subjects and keys for generating collisions with
+subject headers. Unlike the other subject_files, esub requires two parameters
+per line.  These should be seperated with a \fBTab\fP character.
+Default=$HOME/aam2mail/etc/subject_esub
+.SH ENVIRONMENT
+.TP
+.B AAM2MAIL
+Overrides the default path ($HOME/.aam2mailrc) for the master configuration
+file.  This setting can be overridden with the \fB--config\fP option.
+.SH EXAMPLES
+.TP
+.B aam2mail --start
+Start \fBaam2mail\fP in non-interactive, daemon mode.
+.TP
+.B aam2mail --config=/etc/aam2mail
+Start \fBaam2mail\fP in the current console session and use \fI/etc/aam2mail\fP
+as the configuration file.
