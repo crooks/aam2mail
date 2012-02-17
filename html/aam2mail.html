@@ -1,0 +1,77 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=us-ascii">
+<meta http-equiv="Content-Style-Type" content="text/css2" />
+<meta name="keywords" content="Mixmaster,Nymserver">
+<title>Aam2Mail Anonymous Message Retrieval</title>
+<link rel="StyleSheet" href="master.css" type="text/css">
+</head>
+
+<body>
+<h1>Aam2Mail - Anonymous Message Retrieval</h1>
+<h2>Introduction</h2>
+Usenet provides a useful repository for anonymous email messages. By storing
+them in this medium, users can retrieve messages at their leisure from any
+Usenet service that carries the group alt.anonymous.messages. Due to the public
+nature of Usenet, messages in a.a.m are encrypted in such a manner as to
+prevent identification of their ownership.  This in turn means the owners of
+the messages require tools to identify their messages and return them to a mail
+interface. This is one such tool.<br><br>
+
+<h2>What is Aam2Mail</h2>
+Aam2Mail reads messages from alt.anonymous.messages and identifies the owner by
+way of the Subject content.  The Subjects might be plain-text or use one of two
+cryptographic methods to prevent linkability between them.  These methods are
+eSub (Encrypted Subject) and <a href='hsub.html'>hSub</a> (Hashed Subject).
+When a Subject match is found, Aam2Mail will store the message in <a
+href="http://en.wikipedia.org/wiki/Maildir">Maildir</a> or <a
+href="http://en.wikipedia.org/wiki/Mbox">mbox</a> format for processing by a
+mail client. Any combination of plain-text, eSub and hSub formatted subjects
+can be processed and there is no realistic limit on how many of each type can
+be handled.<br><br>
+
+<h2>What Aam2Mail is not</h2>
+Aam2Mail will not decrypt the message content itself.  This is left to the mail
+client to deal with.  Automated decryption would require the utility to store users'
+<a href='http://www.gnupg.org'>GnuPG</a> passphrases and this is considered
+detrimental to anonymity.<br><br>
+
+<h2>Getting Started</h2>
+The program can be downloaded from <a
+href="http://www.mixnym.net/aam2mail">here</a> or from its <a
+href="https://github.com/crooks/aam2mail">development repository</a>.
+
+Assuming you're using the packaged version, untar the package with:<br>
+<br><b>tar zxvf aam2mail-&lt;version&gt;.tar.gz</b><br><br>
+Then follow the instructions provided in the INSTALL file.
+<br>
+By default the installation will create all the required directories, using a
+root of $HOME/aam2mail. All the locations can be changed but
+this is the default.<br>
+<br>
+<img src='aam2mail.png' alt='Directory Tree'><br>
+<br>
+To change any of the default settings, copy the config.sample to
+$HOME/.aam2mailrc and edit it to match your requirements.  Each option and its
+default is explained in the sample file.<br>
+<br>
+
+Lastly, the subject files need to be created in the etc directory for text,
+esub or hsub retrieval. The files are:<br>
+subject_text<br>
+subject_esub<br>
+subject_hsub<br>
+Each subject to test/retrieve should be entered on a seperate line of the
+appropriate file. In the case of eSub, the Subject and Key should be on the
+same line, seperated by a Tab.
+
+<h2>Starting and Stopping the Daemon</h2>
+To start the daemon, ./aam2mail --start<br>
+Stopping is ./aam2mail --stop<br>
+Once running, the daemon will report normal usage in aam2mail/log/aam2mail.log.
+If any critical errors occur, they will be reported in
+aam2mail/log/aam2mail.err.  Please advise me if this happens.
+
+</body>
+</html>
