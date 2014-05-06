@@ -61,7 +61,7 @@ class aam():
             import aam2mail.hsub
             self.hsub = aam2mail.hsub.hsub()
             self.hsub_list = hsub_list
-            logging.info("Checking %s hSub Subjects" % len(hsub_list))
+            logging.info("Checking %s hSub Subjects", len(hsub_list))
         esub_list = self.file2list(os.path.join(config.get('paths', 'etc'),
                                                 "subject_esub"))
         if esub_list:
@@ -69,11 +69,10 @@ class aam():
             import aam2mail.esub
             self.esub = aam2mail.esub.esub()
             self.esub_list = esub_list
-            logging.info("Checking %s eSub Subjects" % len(esub_list))
+            logging.info("Checking %s eSub Subjects", len(esub_list))
 
         if not do_text and not do_hsub and not do_esub:
-            errmsg = "No text, hsub or esub Subjects defined. Aborting."
-            logging.error(errmsg)
+            logging.error("No text, hsub or esub Subjects defined. Aborting.")
             sys.exit(1)
 
         # Populate the himarks dict and sync it with our etc/servers text file.
@@ -187,24 +186,22 @@ class aam():
             else:
                 first = last - (limit - 1)
         else:
-            logging.info("Fetching all %s available articles." % (howmany + 1))
+            logging.info("Fetching all %s available articles.", (howmany + 1))
         return str(first), str(last)
 
     def xover(self, spool_file):
         # group returns: response, count, first, last, name
         try:
-            resp, grpcount, grpfirst, \
-            grplast, grpname = self.news.group(config.get('usenet',
-                                                          'newsgroup'))
+            resp, grpcount, grpfirst, grplast, \
+                grpname = self.news.group(config.get('usenet', 'newsgroup'))
         except nntplib.NNTPTemporaryError, e:
-            logging.warn("%s: %s" % (self.server, e))
+            logging.warn("%s: %s", self.server, e)
             return 0
         first, last = self.get_range(grpfirst,
                                      grplast,
                                      self.himarks[self.server])
         msgcnt = (int(last) - int(first)) + 1
-        logmes = "%s: Processing %d messages" % (self.server, msgcnt)
-        logging.debug(logmes)
+        logging.debug("%s: Processing %d messages", self.server, msgcnt)
         if msgcnt <= 0:
             return int(last)
         # The following xover line is often remarked out during testing as
@@ -212,9 +209,9 @@ class aam():
         try:
             resp, foo = self.news.xover(first, last, spool_file)
         except nntplib.NNTPTemporaryError, e:
-            logging.warn("%s: %s" % (self.server, e))
+            logging.warn("%s: %s", self.server, e)
             return 0
-        logging.debug("Xover responded with: %s" % resp)
+        logging.debug("Xover responded with: %s", resp)
         return int(last)
 
     def retrieve(self, spool_file):
@@ -234,7 +231,7 @@ class aam():
             # Not a great check as it's only relevent if all servers we
             # pull from are in sync.
             if msgid in self.dedupe:
-                logging.debug("%s: Already processed." % msgid)
+                logging.debug("%s: Already processed.", msgid)
                 continue
 
             # Retreive the actual payload.  This is amazingly inefficient as we
@@ -301,7 +298,7 @@ class aam():
         try:
             body = self.list2multi_line_string(self.news.body(msgid)[3])
         except socket.error:
-            logging.warn("Timeout retrieving %s" % msgid)
+            logging.warn("Timeout retrieving %s", msgid)
             return None
         except nntplib.NNTPTemporaryError:
             message = '%s: news.body returned a temporary ' % self.server
@@ -331,14 +328,14 @@ class aam():
                                  server + '.tmp')
 
             # Establish a connection with the newsserver.
-            logging.debug("%s: Establishing connection." % server)
+            logging.debug("%s: Establishing connection.", server)
             try:
                 self.news = nntplib.NNTP(server, readermode=True)
             except nntplib.NNTPTemporaryError, e:
-                logging.warn('%s: Connection error: %s' % (server, e))
+                logging.warn('%s: Connection error: %s', server, e)
                 continue
             except socket.gaierror, e:
-                logging.warn('%s: Connection error: %s' % (server, e))
+                logging.warn('%s: Connection error: %s', server, e)
                 continue
             except socket.error, e:
                 logging.warn('%s: Socket error: %s', server, e)
@@ -355,7 +352,7 @@ class aam():
             #it then there are no new messages to process.
             if himark == self.himarks[server]:
                 # we didn't fetch any messages so move on to the next server
-                logging.debug("%s: No new messages." % server)
+                logging.debug("%s: No new messages.", server)
                 self.news.quit()
                 continue
             # Now we retrieve messages from the servers and test them.
@@ -363,9 +360,9 @@ class aam():
             self.himarks[server] = himark
             self.news.quit()
         if received > 0:
-            logging.info("Received %d messages." % received)
+            logging.info("Received %d messages.", received)
         else:
-            logging.debug("Received %d messages." % received)
+            logging.debug("Received %d messages.", received)
         msg = "We processed %d unique messages " % len(self.dedupe)
         msg += "from %d servers " % srv_count
         msg += "(%d attempted)." % len(self.himarks)
