@@ -340,6 +340,8 @@ class aam():
             except socket.gaierror, e:
                 logging.warn('%s: Connection error: %s' % (server, e))
                 continue
+            except socket.error, e:
+                logging.warn('%s: Socket error: %s', server, e)
             himark = self.xover(spool)
             # Zero isn't a valid himark so our xover routine can return it
             # to indicate something went wrong.  Hopefully the something is

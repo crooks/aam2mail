@@ -2,3 +2,4 @@ v0.1, 13-Feb-2012 -- Initial release.
 
 v0.2, xx-xxxx-2012 -- Fixes
 o Correct a manpage entry that states subject_plain instead of subject_text.
+o Add an exception check for socket.error when establishing NNTP connections.
